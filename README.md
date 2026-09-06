@@ -1,110 +1,161 @@
-# TAILG Site Control — Foundation V1
+# TAILG Site Control V2
 
-Pilot quản lý thi công móng cho dự án TAILG, thiết kế để triển khai nhanh trên Vercel và dùng tốt trên điện thoại tại công trường.
+Pilot điều hành thi công cho dự án TAILG, đã chuyển từ Vanilla/localStorage sang kiến trúc production-friendly:
 
-## Phạm vi V1
+- **Frontend:** Next.js App Router + React + TypeScript
+- **Backend:** Next.js Route Handlers trên Node.js/Vercel
+- **Database:** PostgreSQL trên Supabase
+- **Ảnh hiện trường:** private Supabase Storage
+- **Auth:** username/PIN băm bằng PostgreSQL `pgcrypto` + session JWT HttpOnly
+- **Deploy:** Vercel
 
-- 7 tài khoản nghiệp vụ: 1 Chỉ huy trưởng + 6 Đội trưởng.
-- 6 đội nhập: ngày, số lượng công nhân, khu vực, công việc móng, tên móng, % tiến độ, ghi chú.
-- Dữ liệu của 6 đội tự động tổng hợp trong dashboard Chỉ huy trưởng.
-- Chống trùng chủ quản móng: cùng một tên móng không thể thuộc 2 đội khác nhau.
-- Mặt bằng tiến độ mô phỏng theo phân khu Xưởng 1 / Xưởng 2 / Xưởng 3 / Nhà ăn / Nhà xe / Bể ngầm / Bể XLNT / Hạ tầng.
-- Có danh mục móng, lịch sử báo cáo, cảnh báo đội chưa báo cáo, mốc tiến độ, xuất JSON/CSV.
-- Responsive cho desktop, tablet và điện thoại.
-- Có chế độ Cloud Sync tùy chọn để 6 đội nhập từ nhiều thiết bị và Chỉ huy trưởng nhận dữ liệu tự động.
+## Phạm vi Giai đoạn 1
 
-## 7 tài khoản Pilot
+Chỉ làm đúng luồng:
 
-PIN demo mặc định cho toàn bộ tài khoản: `123456`
+**6 Đội trưởng nhập hằng ngày → PostgreSQL lưu tập trung → Phan Viết Tùng xem Dashboard.**
+
+Dữ liệu nhập gồm ngày, nhân công, cán bộ kỹ thuật, khu vực, công việc móng, tên/mã móng, khối lượng, phần trăm tiến độ, vướng mắc, ghi chú và ảnh hiện trường.
+
+Chưa đưa AI, chatbot, ERP, BIM, kế toán, vật tư/máy móc đầy đủ vào V2 này.
+
+## 7 tài khoản
 
 | Tài khoản | Vai trò | Phạm vi |
 |---|---|---|
-| Phan Viết Tùng | Chỉ huy trưởng | Xem tổng hợp 6 đội |
-| Bùi Văn Đức | Đội trưởng | 1/4 Xưởng 1, Xưởng 2 |
+| Phan Viết Tùng | Chỉ huy trưởng | Dashboard tổng hợp |
+| Bùi Văn Đức | Đội trưởng | 1/4 Xưởng 1 + Xưởng 2 |
 | Tăng Văn Toán | Đội trưởng | 1/4 Xưởng 1 |
 | Trần Văn Toãn | Đội trưởng | 1/4 Xưởng 1 |
 | Nguyễn Văn Tuần | Đội trưởng | 1/4 Xưởng 1 |
-| Nguyễn Ánh Quang | Đội trưởng | 1/2 Xưởng 3, Nhà ăn, Nhà xe, Bể ngầm, Bể XLNT |
-| Nguyễn Duy Thọ | Đội trưởng | 1/2 Xưởng 3, Hạ tầng |
+| Nguyễn Ánh Quang | Đội trưởng | 1/2 Xưởng 3 + Nhà ăn + Nhà xe + Bể ngầm + Bể XLNT |
+| Nguyễn Duy Thọ | Đội trưởng | 1/2 Xưởng 3 + Hạ tầng |
 
-## Quy tắc nghiệp vụ móng
+PIN được bạn tự đặt trong `supabase/seed.sql` trước khi chạy seed; PIN không được commit vào repository.
 
-- Một tên móng chỉ có một đội chủ quản.
-- Đội chỉ được nhập khu vực đã phân công.
-- Có thể cập nhật lại cùng tên móng nếu vẫn thuộc đúng đội; tiến độ mới nhất được dùng cho danh mục.
-- Nếu nhập một tên móng đã thuộc đội khác, hệ thống chặn lưu và báo đội đang sở hữu.
-- Khi xóa báo cáo, danh mục móng được dựng lại từ các báo cáo còn lại.
-- Tên móng có thể tạm dùng `M-01`, `M-02`, `M-03`... rồi chuẩn hóa lại khi có danh mục chính thức.
+## Source chính
 
-## Mốc tiến độ đang đưa vào Dashboard
+```text
+tailg/
+├── app/
+│   ├── (dashboard)/
+│   │   ├── foundations/page.tsx
+│   │   ├── map/page.tsx
+│   │   ├── reports/new/page.tsx
+│   │   ├── reports/page.tsx
+│   │   ├── teams/page.tsx
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── api/
+│   │   ├── auth/login/route.ts
+│   │   ├── auth/logout/route.ts
+│   │   ├── health/route.ts
+│   │   ├── reports/route.ts
+│   │   └── reports/[id]/photos/route.ts
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── login/page.tsx
+├── components/
+├── docs/SETUP_SUPABASE.md
+├── lib/
+├── supabase/
+│   ├── schema.sql
+│   ├── seed.sql
+│   └── functions.sql
+├── .env.example
+├── next.config.ts
+├── package.json
+└── tsconfig.json
+```
 
-- Móng Xưởng 1: 16/07/2026 → 07/09/2026.
-- Cốt thép, cốp pha, bê tông móng + dầm móng Xưởng 1: 25/07/2026 → 07/09/2026.
-- Móng Xưởng 2 + 3: 29/08/2026 → 08/11/2026.
-- Cốt thép, cốp pha, bê tông móng + dầm móng Xưởng 2 + 3: 10/09/2026 → 08/11/2026.
+## Backend
 
-## Chạy local
+```text
+Điện thoại Đội trưởng
+        │
+        ▼
+Next.js UI
+        │
+        ├── POST /api/reports
+        │       ▼
+        │   create_work_entry()
+        │       ├── kiểm tra đúng khu vực
+        │       ├── chặn trùng chủ quản móng
+        │       ├── cập nhật nhân lực
+        │       ├── lưu công việc
+        │       └── cập nhật trạng thái móng
+        │
+        └── POST /api/reports/:id/photos
+                ▼
+          Supabase Storage
 
-Không cần cài package. Mở `index.html` trực tiếp hoặc chạy static server:
+PostgreSQL ─────────────→ Dashboard Phan Viết Tùng
+Storage ảnh ────────────→ signed URL → Dashboard
+```
+
+## Lấy API Supabase + cài đặt
+
+Đọc file **[`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md)**. Trong đó có từng bước:
+
+1. tạo Supabase project;
+2. lấy Project URL;
+3. lấy server/service-role API key;
+4. chạy 3 file SQL;
+5. tạo `SESSION_SECRET`;
+6. cấu hình `.env.local`;
+7. chạy local;
+8. thêm Environment Variables trên Vercel;
+9. kiểm tra `/api/health`;
+10. test 7 tài khoản.
+
+Tóm tắt chạy local:
 
 ```bash
-python -m http.server 8080
+cp .env.example .env.local
+npm install
+npm run dev
 ```
 
-Mở `http://localhost:8080`.
+## Biến môi trường
 
-## Deploy Vercel — chế độ nhanh
+```env
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SESSION_SECRET=
+SUPABASE_STORAGE_BUCKET=site-photos
+```
 
-1. Import repository `phu20032k1/tailg` vào Vercel.
-2. Framework Preset: `Other`.
-3. Không cần Build Command.
-4. Output Directory để trống.
-5. Deploy.
+Không commit `.env.local`.
 
-`vercel.json` đã có sẵn cấu hình cho static site + `/api/state`.
+**`SUPABASE_SERVICE_ROLE_KEY` tuyệt đối không được đưa vào biến `NEXT_PUBLIC_*`.**
 
-Nếu chưa cấu hình database, web vẫn chạy bình thường ở chế độ **Dữ liệu cục bộ V1**. Chế độ này chỉ phù hợp demo trên cùng một thiết bị/trình duyệt.
+## Ảnh lưu ở đâu?
 
-## Bật Cloud Sync cho 6 điện thoại
+Ảnh thật **không lưu trong GitHub, localStorage hoặc PostgreSQL**.
 
-Để 6 Đội trưởng nhập trên các điện thoại khác nhau và tài khoản Phan Viết Tùng nhìn thấy dữ liệu, cần gắn một Redis REST database cho project Vercel.
+Ảnh được lưu trong private Supabase Storage bucket `site-photos`. PostgreSQL chỉ giữ `storage_path` + metadata. Dashboard tạo signed URL có thời hạn khi hiển thị.
 
-Có thể dùng Vercel Marketplace / Upstash Redis. Sau khi kết nối, project cần có một trong hai cặp biến môi trường sau:
+## Dữ liệu Pilot cũ
+
+Dữ liệu localStorage/Redis của V1 không tự động migrate vào PostgreSQL V2. Nếu cần giữ dữ liệu cũ, export trước rồi viết bước import riêng.
+
+## Test trước khi deploy
+
+```bash
+npm run build
+npm run lint
+```
+
+Sau deploy mở:
 
 ```text
-KV_REST_API_URL
-KV_REST_API_TOKEN
+/api/health
 ```
 
-hoặc:
+Sau đó test:
 
-```text
-UPSTASH_REDIS_REST_URL
-UPSTASH_REDIS_REST_TOKEN
-```
-
-Sau đó Redeploy. Khi kết nối thành công, góc dưới sidebar sẽ đổi từ `Dữ liệu cục bộ V1` sang `Cloud sync · 7 tài khoản`.
-
-Cloud V1 hiện có cơ chế:
-
-- tự đẩy báo cáo sau khi lưu;
-- tự kéo dữ liệu mới định kỳ khoảng 8 giây;
-- hợp nhất báo cáo theo `log.id` để giảm nguy cơ ghi đè khi nhiều đội nhập gần nhau;
-- đồng bộ thao tác xóa báo cáo bằng danh sách tombstone `deletedLogIds`;
-- tải lại dashboard khi có revision mới từ thiết bị khác.
-
-## Kiểm thử nhanh trước khi dùng thật
-
-1. Đăng nhập Bùi Văn Đức, nhập 2 móng `M-01, M-02`.
-2. Đăng nhập Tăng Văn Toán và thử nhập lại `M-01` → hệ thống phải chặn trùng chủ quản.
-3. Dùng 2 trình duyệt/điện thoại khác nhau khi Cloud Sync đã bật: một máy nhập báo cáo, máy Phan Viết Tùng phải nhận dữ liệu sau vài giây.
-4. Kiểm tra Chỉ huy trưởng nhìn được 6 đội, nhân công hôm nay, nhật ký và danh mục móng.
-5. Đăng nhập Đội trưởng và xác nhận không xem được dữ liệu chi tiết của đội khác.
-
-## Lưu ý trước khi production
-
-Đây là Pilot Giai đoạn 1, chủ đích giữ nhỏ: **nhân công + công việc móng + tên móng + % tiến độ + tổng hợp 6 đội**.
-
-PIN `123456` đang là PIN demo nằm ở frontend. Trước khi dùng như hệ thống chính thức, nên chuyển xác thực sang backend, cấp PIN/mật khẩu riêng cho từng tài khoản và không lưu thông tin đăng nhập thật trong repository public.
-
-Chưa đưa vào V1: AI, chatbot, ERP, BIM/Digital Twin, quản lý vật tư đầy đủ, máy móc đầy đủ, kế toán, dự báo/cảnh báo thông minh hoặc quy trình nhiều cấp.
+1. Đức nhập M-01.
+2. Toán thử nhập M-01 → phải bị chặn.
+3. Đức tải ảnh hiện trường.
+4. Tùng xem được nhân công, móng, nhật ký và ảnh.
+5. Mở trên điện thoại khác → vẫn cùng nguồn PostgreSQL + Storage.
