@@ -10,25 +10,36 @@ TAILG V2 dùng **Supabase PostgreSQL + Supabase Storage**. Frontend không gọi
 4. Chọn region gần công trường/người dùng.
 5. Lưu database password ở nơi an toàn.
 
-## 2. Lấy URL và server API key
+## 2. Lấy Project URL và Secret API key
+
+Supabase hiện khuyến nghị hệ key mới:
+
+- `sb_publishable_...` dùng cho browser/mobile khi cần.
+- `sb_secret_...` dùng cho backend/server và có quyền elevated.
+
+TAILG V2 hiện chỉ cần **server Secret key** vì mọi truy cập Supabase đều đi qua Next.js backend.
 
 Trong Supabase Dashboard của project:
 
-1. Mở **Project Settings**.
-2. Vào phần **API / API Keys**.
-3. Copy **Project URL**.
-4. Copy **server-side secret key** hoặc **service_role key**.
+1. Mở **Connect** để xem/copy Project URL, hoặc vào **Settings → API Keys**.
+2. Copy **Project URL**, ví dụ `https://xxxxx.supabase.co`.
+3. Trong **Settings → API Keys**, tạo hoặc copy **Secret key** dạng `sb_secret_...`.
+4. Không dùng Secret key trong browser và không đặt nó dưới tên biến bắt đầu bằng `NEXT_PUBLIC_`.
 
 Gán vào `.env.local`:
 
 ```env
 SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_xxxxx
+```
+
+Nếu project cũ chưa có Secret key mới, app vẫn hỗ trợ legacy `service_role` bằng biến:
+
+```env
 SUPABASE_SERVICE_ROLE_KEY=xxxxx
 ```
 
-> Tuyệt đối không đặt `SUPABASE_SERVICE_ROLE_KEY` thành biến `NEXT_PUBLIC_*`. Không gửi key này cho đội trưởng.
-
-Supabase có thể hiển thị hệ key mới dạng `sb_secret_...` hoặc legacy `service_role`. App cần server key có quyền tương đương service role.
+Nhưng nên ưu tiên `SUPABASE_SECRET_KEY`.
 
 ## 3. Tạo database
 
@@ -92,7 +103,7 @@ cp .env.example .env.local
 
 ```env
 SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=xxxxx
+SUPABASE_SECRET_KEY=sb_secret_xxxxx
 SESSION_SECRET=xxxxx
 SUPABASE_STORAGE_BUCKET=site-photos
 ```
@@ -165,7 +176,7 @@ Bucket là **private**. Dashboard tạo signed URL ngắn hạn khi cần xem �
 
 ```text
 SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_SECRET_KEY
 SESSION_SECRET
 SUPABASE_STORAGE_BUCKET
 ```
