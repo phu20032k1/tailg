@@ -23,6 +23,12 @@
     try { return JSON.parse(raw); } catch { return null; }
   }
 
+  function sameDomainData(a, b) {
+    if (!a || !b) return false;
+    return JSON.stringify(a.logs || []) === JSON.stringify(b.logs || []) &&
+      JSON.stringify(a.foundations || {}) === JSON.stringify(b.foundations || {});
+  }
+
   function deletedBetween(previousRaw, nextRaw) {
     const previous = parseState(previousRaw);
     const next = parseState(nextRaw);
@@ -67,44 +73,6 @@
     return state;
   }
 
-  async function pushState(raw) {
-    if (!cloudAvailable || applyingRemote || syncing) return;
-    const payload = buildPayload(raw);
-    if (!payload) return;
-
-    syncing = true;
-    updateModeChip('Đang đồng bộ…');
-    try {
-      const result = await api('PUT', payload);
-      pendingDeletedIds.clear();
-      if (result?.state?.syncMeta?.revision != null) {
-        setRevision(result.state.syncMeta.revision);
-      }
-      cloudAvailable = true;
-      updateModeChip();
-    } catch (error) {
-      cloudAvailable = error.code !== 'NOT_CONFIGURED' ? cloudAvailable : false;
-      updateModeChip(cloudAvailable ? 'Cloud tạm gián đoạn' : 'Dữ liệu cục bộ V1');
-    } finally {
-      syncing = false;
-    }
-  }
-
-  Storage.prototype.setItem = function(key, value) {
-    const isTailgLocal = this === window.localStorage && key === STORAGE_KEY;
-    if (isTailgLocal && !applyingRemote) {
-      deletedBetween(lastLocalRaw, value).forEach(id => pendingDeletedIds.add(id));
-      lastLocalRaw = value;
-    }
-
-    nativeSetItem.call(this, key, value);
-
-    if (isTailgLocal && !applyingRemote) {
-      clearTimeout(pushTimer);
-      pushTimer = setTimeout(() => pushState(value), 350);
-    }
-  };
-
   function canApplyRemote() {
     return !document.querySelector('dialog[open]') && !document.querySelector('input:focus, textarea:focus, select:focus');
   }
@@ -127,6 +95,53 @@
     return true;
   }
 
+  async function pushState(raw) {
+    if (!cloudAvailable || applyingRemote || syncing) return;
+    const payload = buildPayload(raw);
+    if (!payload) return;
+
+    syncing = true;
+    updateModeChip('Đang đồng bộ…');
+    try {
+      const result = await api('PUT', payload);
+      pendingDeletedIds.clear();
+      cloudAvailable = true;
+
+      const merged = result?.state;
+      if (merged?.syncMeta?.revision != null) setRevision(merged.syncMeta.revision);
+      updateModeChip();
+
+      // Nếu API vừa hợp nhất thêm dữ liệu của thiết bị khác, kéo bản hợp nhất về ngay.
+      const local = parseState(localStorage.getItem(STORAGE_KEY));
+      if (merged && !sameDomainData(local, merged)) {
+        setTimeout(() => applyRemoteState(merged), 0);
+      }
+    } catch (error) {
+      cloudAvailable = error.code !== 'NOT_CONFIGURED' ? cloudAvailable : false;
+      updateModeChip(cloudAvailable ? 'Cloud tạm gián đoạn' : 'Dữ liệu cục bộ V1');
+    } finally {
+      syncing = false;
+    }
+  }
+
+  Storage.prototype.setItem = function(key, value) {
+    const isTailgLocal = this === window.localStorage && key === STORAGE_KEY;
+    if (isTailgLocal && !applyingRemote) {
+      deletedBetween(lastLocalRaw, value).forEach(id => pendingDeletedIds.add(id));
+      lastLocalRaw = value;
+    }
+
+    nativeSetItem.call(this, key, value);
+
+    if (isTailgLocal && !applyingRemote) {
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(() => {
+        pushTimer = null;
+        pushState(value);
+      }, 350);
+    }
+  };
+
   async function hydrate() {
     try {
       const result = await api('GET');
@@ -146,9 +161,9 @@
         return;
       }
 
-      // Khi thiết bị có dữ liệu cục bộ chưa từng lên cloud, gửi lên để API hợp nhất
-      // trước khi kéo trạng thái chuẩn về. Nhờ vậy đổi thiết bị không làm mất báo cáo.
-      if (local && localRaw !== JSON.stringify(remote)) {
+      // Nếu thiết bị đang có dữ liệu cục bộ, gửi lên trước để API hợp nhất rồi mới kéo
+      // trạng thái chuẩn về. Nhờ vậy dữ liệu nhập khi mất mạng không bị bỏ mất.
+      if (local && !sameDomainData(local, remote)) {
         const merged = await api('PUT', buildPayload(localRaw));
         pendingDeletedIds.clear();
         if (merged?.state) {
@@ -161,7 +176,7 @@
       setRevision(remote.syncMeta?.revision || 0);
       applyRemoteState(remote);
       startPolling();
-    } catch (error) {
+    } catch {
       cloudAvailable = false;
       updateModeChip('Dữ liệu cục bộ V1');
     }
