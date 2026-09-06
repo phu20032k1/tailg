@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="TAILG Site Control - quản lý nhân công và tiến độ móng theo 6 đội thi công." />
+  <title>TAILG Site Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+  <section id="loginView" class="login-shell">
+    <div class="login-bg-grid"></div>
+    <div class="login-orb orb-a"></div>
+    <div class="login-orb orb-b"></div>
+
+    <div class="login-brand-panel">
+      <div class="brand-mark">T</div>
+      <div>
+        <div class="eyebrow">LICOGI 18.3 · DỰ ÁN TAILG</div>
+        <h1>TAILG Site Control</h1>
+        <p>Điều hành nhân lực và tiến độ móng theo khu vực thi công.</p>
+      </div>
+      <div class="login-mini-map" aria-hidden="true">
+        <div class="mini-zone mini-zone-red">Xưởng 1</div>
+        <div class="mini-zone mini-zone-blue">Xưởng 2</div>
+        <div class="mini-zone mini-zone-blue">Xưởng 3</div>
+        <div class="mini-zone mini-zone-soft">Phụ trợ</div>
+      </div>
+      <div class="login-highlight">
+        <span class="pulse-dot"></span>
+        <div>
+          <strong>Giai đoạn 1: Móng</strong>
+          <span>Nhập nhân công · công việc · tên móng · % tiến độ</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-card-wrap">
+      <form id="loginForm" class="login-card">
+        <div class="mobile-brand">
+          <div class="brand-mark small">T</div>
+          <div><strong>TAILG Site Control</strong><span>LICOGI 18.3</span></div>
+        </div>
+        <span class="pill pill-info">BẢN V1 · NỘI BỘ CÔNG TRƯỜNG</span>
+        <h2>Đăng nhập hệ thống</h2>
+        <p class="muted">Chọn đúng tài khoản để dữ liệu được ghi về đúng đội và tổng hợp lên Chỉ huy trưởng.</p>
+
+        <label class="field-label" for="accountSelect">Tài khoản</label>
+        <select id="accountSelect" class="control" required></select>
+
+        <label class="field-label" for="pinInput">Mã PIN</label>
+        <div class="password-wrap">
+          <input id="pinInput" class="control" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Nhập PIN" maxlength="12" required />
+          <button type="button" id="togglePin" class="icon-btn" aria-label="Hiện/ẩn PIN">👁</button>
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit">Đăng nhập <span>→</span></button>
+        <div class="login-hint">PIN demo mặc định: <code>123456</code></div>
+      </form>
+    </div>
+  </section>
+
+  <div id="appView" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small">T</div>
+        <div><strong>TAILG</strong><span>Site Control</span></div>
+      </div>
+      <nav id="sideNav" class="side-nav"></nav>
+      <div class="sidebar-footer">
+        <div class="mode-chip"><span class="status-dot"></span> Dữ liệu cục bộ V1</div>
+        <button id="logoutBtn" class="btn btn-ghost btn-block">Đăng xuất</button>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <button id="menuBtn" class="menu-btn" aria-label="Mở menu">☰</button>
+        <div>
+          <div id="breadcrumb" class="eyebrow">DỰ ÁN TAILG</div>
+          <h2 id="pageTitle">Tổng quan</h2>
+        </div>
+        <div class="topbar-actions">
+          <div id="todayLabel" class="date-chip"></div>
+          <div class="user-chip">
+            <div id="userAvatar" class="avatar">PT</div>
+            <div><strong id="userName">Phan Viết Tùng</strong><span id="userRole">Chỉ huy trưởng</span></div>
+          </div>
+        </div>
+      </header>
+      <section id="pageContent" class="page-content"></section>
+    </main>
+  </div>
+
+  <dialog id="reportDialog" class="dialog">
+    <form id="reportForm" method="dialog" class="dialog-card">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">NHẬT KÝ THI CÔNG</span>
+          <h3>Nhập nhân công & công việc</h3>
+        </div>
+        <button type="button" id="closeDialog" class="icon-btn round">✕</button>
+      </div>
+
+      <div class="form-grid two">
+        <div>
+          <label class="field-label" for="reportDate">Ngày báo cáo</label>
+          <input id="reportDate" class="control" type="date" required />
+        </div>
+        <div>
+          <label class="field-label" for="workerCount">Số lượng công nhân</label>
+          <input id="workerCount" class="control" type="number" min="0" max="999" placeholder="VD: 28" required />
+        </div>
+      </div>
+
+      <label class="field-label" for="zoneSelect">Khu vực phụ trách</label>
+      <select id="zoneSelect" class="control" required></select>
+
+      <div class="form-grid two">
+        <div>
+          <label class="field-label" for="workStage">Công việc móng</label>
+          <select id="workStage" class="control" required>
+            <option value="Đào móng">Đào móng</option>
+            <option value="Bê tông lót">Bê tông lót</option>
+            <option value="Cốt thép, cốp pha">Cốt thép, cốp pha</option>
+            <option value="Đổ bê tông đài móng" selected>Đổ bê tông đài móng</option>
+            <option value="Dầm móng">Dầm móng</option>
+            <option value="Khác">Khác</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="progressInput">Tiến độ khu vực sau báo cáo (%)</label>
+          <input id="progressInput" class="control" type="number" min="0" max="100" step="0.1" placeholder="VD: 92" required />
+        </div>
+      </div>
+
+      <label class="field-label" for="foundationNames">Tên móng thực hiện</label>
+      <textarea id="foundationNames" class="control textarea" rows="4" placeholder="VD: M-01, M-05, M-07&#10;Có thể nhập nhiều tên, cách nhau bằng dấu phẩy hoặc xuống dòng." required></textarea>
+      <div class="field-help">Một móng chỉ thuộc một đội. Nếu tên móng đã được đội khác nhận, hệ thống sẽ chặn nhập trùng.</div>
+
+      <label class="field-label" for="reportNote">Ghi chú hiện trường</label>
+      <textarea id="reportNote" class="control textarea small" rows="3" placeholder="Vướng mắc, vật tư, điều kiện thi công... (không bắt buộc)"></textarea>
+
+      <div id="formError" class="form-error hidden"></div>
+      <div class="dialog-actions">
+        <button type="button" id="cancelReport" class="btn btn-secondary">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu báo cáo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="detailsDialog" class="dialog wide">
+    <div class="dialog-card">
+      <div class="dialog-head">
+        <div><span class="eyebrow">CHI TIẾT KHU VỰC</span><h3 id="detailsTitle">Khu vực</h3></div>
+        <button type="button" id="closeDetails" class="icon-btn round">✕</button>
+      </div>
+      <div id="detailsContent"></div>
+    </div>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
