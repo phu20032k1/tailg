@@ -7,15 +7,18 @@ export function getSupabaseAdmin() {
   if (client) return client;
 
   const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Supabase recommends the new sb_secret_* server key. Keep the legacy
+  // service_role variable as a fallback so existing deployments can migrate safely.
+  const secretKey =
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !serviceRoleKey) {
+  if (!url || !secretKey) {
     throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Copy .env.example to .env.local."
+      "Missing SUPABASE_URL or SUPABASE_SECRET_KEY. Copy .env.example to .env.local."
     );
   }
 
-  client = createClient(url, serviceRoleKey, {
+  client = createClient(url, secretKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
