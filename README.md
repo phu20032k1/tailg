@@ -99,7 +99,7 @@ Storage ảnh ────────────→ signed URL → Dashboard
 
 1. tạo Supabase project;
 2. lấy Project URL;
-3. lấy server/service-role API key;
+3. lấy server Secret API key dạng `sb_secret_...`;
 4. chạy 3 file SQL;
 5. tạo `SESSION_SECRET`;
 6. cấu hình `.env.local`;
@@ -120,14 +120,14 @@ npm run dev
 
 ```env
 SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_SECRET_KEY=
 SESSION_SECRET=
 SUPABASE_STORAGE_BUCKET=site-photos
 ```
 
 Không commit `.env.local`.
 
-**`SUPABASE_SERVICE_ROLE_KEY` tuyệt đối không được đưa vào biến `NEXT_PUBLIC_*`.**
+**`SUPABASE_SECRET_KEY` tuyệt đối không được đưa vào biến `NEXT_PUBLIC_*` hoặc gửi cho người dùng cuối.** App vẫn có fallback cho legacy `SUPABASE_SERVICE_ROLE_KEY` nếu project cũ chưa chuyển key mới.
 
 ## Ảnh lưu ở đâu?
 
