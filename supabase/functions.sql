@@ -61,6 +61,12 @@ begin
     raise exception 'FOUNDATION_REQUIRED';
   end if;
 
+  -- Serialize ownership checks for every foundation code in this transaction.
+  -- This prevents two teams claiming the same new code at the same instant.
+  perform pg_advisory_xact_lock(hashtextextended(code, 1843))
+  from unnest(v_codes) as code
+  order by code;
+
   select f.code into v_conflict
   from public.foundations f
   where f.code = any(v_codes) and f.owner_id <> p_leader_id
@@ -121,3 +127,9 @@ on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+-- Only the Next.js backend uses these RPCs through the server-side service key.
+revoke all on function public.authenticate_user(text, text) from public, anon, authenticated;
+revoke all on function public.create_work_entry(date, uuid, integer, integer, text, text, text[], numeric, numeric, text, text, text) from public, anon, authenticated;
+grant execute on function public.authenticate_user(text, text) to service_role;
+grant execute on function public.create_work_entry(date, uuid, integer, integer, text, text, text[], numeric, numeric, text, text, text) to service_role;
