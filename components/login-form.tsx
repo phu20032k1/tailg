@@ -23,26 +23,30 @@ export function LoginForm() {
     setError("");
     setLoading(true);
 
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        username: form.get("username"),
-        pin: form.get("pin")
-      })
-    });
+    try {
+      const form = new FormData(event.currentTarget);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          username: form.get("username"),
+          pin: form.get("pin")
+        })
+      });
 
-    const result = await response.json();
-    setLoading(false);
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "Không đăng nhập được.");
+        return;
+      }
 
-    if (!response.ok) {
-      setError(result.error || "Không đăng nhập được.");
-      return;
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError("Không gọi được máy chủ đăng nhập. Kiểm tra deployment Vercel.");
+    } finally {
+      setLoading(false);
     }
-
-    router.replace("/");
-    router.refresh();
   }
 
   return (
@@ -64,17 +68,23 @@ export function LoginForm() {
 
       <label className="field">
         <span>Mã PIN</span>
-        <input name="pin" type="password" inputMode="numeric" placeholder="PIN đã đặt trong seed.sql" required />
+        <input name="pin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="Nhập PIN tài khoản" required />
       </label>
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {error ? (
+        <div className="form-error">
+          <strong>Không đăng nhập được.</strong>
+          <div>{error}</div>
+          <a href="/api/health" target="_blank" rel="noreferrer">Mở kiểm tra Supabase / API →</a>
+        </div>
+      ) : null}
 
       <button className="button primary wide" disabled={loading} type="submit">
         {loading ? "Đang đăng nhập..." : "Vào hệ thống →"}
       </button>
 
       <p className="form-help">
-        PIN được đặt khi chạy <code>supabase/seed.sql</code> và không lưu dạng chữ thường trong database.
+        PIN được tạo trong <code>supabase/seed.sql</code>. Trang kiểm tra kết nối không hiển thị secret.
       </p>
     </form>
   );
