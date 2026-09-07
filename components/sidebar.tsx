@@ -56,13 +56,19 @@ export function Sidebar({ user }: { user: SessionUser }) {
         {items.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
-          return <Link className={active ? "nav-link active" : "nav-link"} href={item.href} key={item.href}><Icon size={18} strokeWidth={1.8} /><span>{item.label}</span></Link>;
+          return (
+            <Link className={active ? "nav-link active" : "nav-link"} href={item.href} key={item.href}>
+              <Icon size={19} strokeWidth={1.9} />
+              <span>{item.label}</span>
+            </Link>
+          );
         })}
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="cloud-status"><span className="status-dot" /><div><strong>Dữ liệu trực tuyến</strong><span>Đã kết nối máy chủ</span></div></div>
-        <form action="/api/auth/logout" method="post"><button className="logout-button" type="submit"><LogOut size={17} />Đăng xuất</button></form>
+        <form action="/api/auth/logout" method="post">
+          <button className="logout-button" type="submit"><LogOut size={18} />Đăng xuất</button>
+        </form>
       </div>
     </aside>
   );
