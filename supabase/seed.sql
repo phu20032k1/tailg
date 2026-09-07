@@ -1,7 +1,7 @@
 -- IMPORTANT: replace CHANGE_THIS_PIN_BEFORE_RUN before running this file.
 do $$
 declare
-  v_pin text := 'CHANGE_THIS_PIN_BEFORE_RUN';
+  v_pin text := '123456';
 begin
   insert into public.app_users (id, username, full_name, role, pin_hash, active)
   values
