@@ -41,7 +41,12 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
             aria-label="Xem ảnh lớn"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.signedUrl!} alt={photo.caption || "Ảnh hiện trường"} />
+            <img
+              src={photo.signedUrl!}
+              alt={photo.caption || "Ảnh hiện trường"}
+              loading="lazy"
+              decoding="async"
+            />
             <span className="photo-zoom-hint"><Maximize2 size={16} /> Xem ảnh</span>
             {photo.caption ? <span className="photo-caption">{photo.caption}</span> : null}
           </button>
@@ -55,7 +60,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           </button>
           <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.signedUrl} alt={selected.caption || "Ảnh hiện trường"} />
+            <img src={selected.signedUrl} alt={selected.caption || "Ảnh hiện trường"} decoding="async" />
             {selected.caption ? <div className="photo-lightbox-caption">{selected.caption}</div> : null}
           </div>
         </div>
