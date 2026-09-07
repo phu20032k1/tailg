@@ -1,17 +1,26 @@
--- IMPORTANT: replace CHANGE_THIS_PIN_BEFORE_RUN before running this file.
+-- TAILG pilot seed. Safe to run repeatedly.
+-- Default pilot PIN is 123456. Change v_pin before production use.
+
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
 do $$
 declare
   v_pin text := '123456';
 begin
+  -- pgcrypto may already live in public on an older project or in extensions on
+  -- a standard Supabase project. Resolve either location through search_path.
+  perform set_config('search_path', 'public,extensions', true);
+
   insert into public.app_users (id, username, full_name, role, pin_hash, active)
   values
-    ('00000000-0000-0000-0000-000000000001', 'tung', 'Phan Viết Tùng', 'commander', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000002', 'duc', 'Bùi Văn Đức', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000003', 'toan', 'Tăng Văn Toán', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000004', 'toan-tran', 'Trần Văn Toãn', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000005', 'tuan', 'Nguyễn Văn Tuần', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000006', 'quang', 'Nguyễn Ánh Quang', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000007', 'tho', 'Nguyễn Duy Thọ', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true)
+    ('00000000-0000-0000-0000-000000000001', 'tung', 'Phan Viết Tùng', 'commander', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000002', 'duc', 'Bùi Văn Đức', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000003', 'toan', 'Tăng Văn Toán', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000004', 'toan-tran', 'Trần Văn Toãn', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000005', 'tuan', 'Nguyễn Văn Tuần', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000006', 'quang', 'Nguyễn Ánh Quang', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000007', 'tho', 'Nguyễn Duy Thọ', 'leader', crypt(v_pin, gen_salt('bf', 12)), true)
   on conflict (id) do update set
     username = excluded.username,
     full_name = excluded.full_name,
