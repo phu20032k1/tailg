@@ -87,7 +87,8 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
         labor:labor.filter(i=>i.label.trim()&&Number(i.headcount)>=0).map((i,index)=>({...i,headcount:Number(i.headcount),sortOrder:(index+1)*10})),
         equipment:equipment.filter(i=>i.equipmentName.trim()).map((i,index)=>({...i,quantity:Number(i.quantity),sortOrder:(index+1)*10})),
         tasks:tasks.filter(i=>i.descriptionVi.trim()).map((i,index)=>({...i,sortOrder:(index+1)*10})),
-        foundationUpdates:foundationUpdates.map(i=>({...i,progress:Number(i.progress)}), issueText:""
+        foundationUpdates:foundationUpdates.map(i=>({...i,progress:Number(i.progress)})),
+        issueText:""
       })});
       const result=await response.json(); if(!response.ok)throw new Error(result.error||"Không gửi được báo cáo.");
       const reportId=result.result?.report_id;
