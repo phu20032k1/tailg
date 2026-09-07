@@ -61,15 +61,15 @@ export async function getFormMeta(user: SessionUser) {
 async function listReports(user: SessionUser, limit = 50, from?: string, to?: string) {
   const db = getSupabaseAdmin();
 
-  function applyFilters<T>(query: T & { eq: Function; gte: Function; lte: Function }) {
-    let next: any = query;
+  function applyFilters(query: any) {
+    let next = query;
     if (user.role === "leader") next = next.eq("leader_id", user.id);
     if (from) next = next.gte("report_date", from);
     if (to) next = next.lte("report_date", to);
     return next;
   }
 
-  let query = db
+  let query: any = db
     .from("daily_reports")
     .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,created_at,updated_at")
     .order("report_date", { ascending: false })
@@ -89,7 +89,7 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
   // Old Pilot databases do not yet have raw_message/submitted_at. Keep the
   // dashboard and history pages working while /api/health clearly reports that
   // the V3 migration still needs to be applied.
-  let fallback = db
+  let fallback: any = db
     .from("daily_reports")
     .select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at")
     .order("report_date", { ascending: false })
@@ -99,7 +99,7 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
   const legacy = await fallback;
   if (legacy.error) throw legacy.error;
 
-  return (legacy.data || []).map((report) => ({
+  return (legacy.data || []).map((report: any) => ({
     ...report,
     raw_message: null,
     submitted_at: report.updated_at || report.created_at
