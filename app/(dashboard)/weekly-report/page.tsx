@@ -48,7 +48,7 @@ export default async function WeeklyReportPage({ searchParams }: { searchParams:
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">LICOGI 18.3 → CHỦ ĐẦU TƯ</span><h1>Báo cáo tuần · PowerPoint</h1><p>Tự lấy một phần dữ liệu từ 6 báo cáo ngày, ảnh hiện trường và mặt bằng đã crop từ PDF.</p></div>
+        <div><span className="eyebrow">TỔNG HỢP TUẦN</span><h1>Báo cáo tuần</h1><p>Tổng hợp công việc, nhân lực, ảnh hiện trường và mặt bằng trong khoảng thời gian đã chọn.</p></div>
         <div className="page-title-icon"><FileBarChart size={25} /></div>
       </section>
 
@@ -58,7 +58,7 @@ export default async function WeeklyReportPage({ searchParams }: { searchParams:
             <label>Từ ngày<input type="date" name="from" defaultValue={from} /></label>
             <label>Đến ngày<input type="date" name="to" defaultValue={to} /></label>
             <button className="button secondary" type="submit">Tổng hợp tuần</button>
-            <Link className="button primary" href={`/api/weekly-report/pptx?from=${from}&to=${to}`}><Download size={17} /> Xuất PowerPoint</Link>
+            <Link className="button primary" href={`/api/weekly-report/pptx?from=${from}&to=${to}`}><Download size={17} /> Tải báo cáo trình chiếu</Link>
           </form>
 
           <div className="weekly-kpis">
@@ -73,11 +73,11 @@ export default async function WeeklyReportPage({ searchParams }: { searchParams:
       </section>
 
       <section className="dashboard-grid section-gap">
-        <article className="panel"><div className="panel-head"><div><span className="eyebrow">TỰ ĐỘNG TỪ BÁO CÁO NGÀY</span><h2>Công việc chính trong tuần</h2></div></div><div className="panel-body weekly-task-list">{tasks.filter((task) => task.kind === "main").slice(0, 30).map((task) => <div key={task.id}><strong>{task.area_label || "Công trường"}</strong><span>{task.description_vi}</span><small>{task.leader?.full_name} · {formatDate(task.reportDate)}</small></div>)}{!tasks.length ? <div className="empty-state">Chưa có dữ liệu trong khoảng đã chọn.</div> : null}</div></article>
-        <article className="panel"><div className="panel-head"><div><span className="eyebrow">MẶT BẰNG PDF → ẢNH CROP</span><h2>Tài liệu đưa vào slide</h2></div><ImageIcon size={19} /></div><div className="panel-body"><WeeklyAssetForm from={from} to={to} />{assets.length ? <div className="asset-list">{assets.map((asset) => <a key={asset.id} href={asset.signedUrl || "#"} target="_blank" rel="noreferrer"><strong>{asset.title}</strong><span>{asset.source_pdf_path ? "Có PDF nguồn" : "Chỉ ảnh crop"}</span></a>)}</div> : null}</div></article>
+        <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">CÔNG VIỆC TRONG TUẦN</span><h2>Công việc chính</h2></div></div><div className="panel-body weekly-task-list">{tasks.filter((task) => task.kind === "main").slice(0, 30).map((task) => <div key={task.id}><strong>{task.area_label || "Công trường"}</strong><span>{task.description_vi}</span><small>{task.leader?.full_name} · {formatDate(task.reportDate)}</small></div>)}{!tasks.length ? <div className="empty-state">Chưa có dữ liệu trong khoảng đã chọn.</div> : null}</div></article>
+        <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">MẶT BẰNG TIẾN ĐỘ</span><h2>Tài liệu báo cáo</h2></div><ImageIcon size={19} /></div><div className="panel-body"><WeeklyAssetForm from={from} to={to} />{assets.length ? <div className="asset-list">{assets.map((asset) => <a key={asset.id} href={asset.signedUrl || "#"} target="_blank" rel="noreferrer"><strong>{asset.title}</strong><span>{asset.source_pdf_path ? "Có tài liệu gốc" : "Ảnh mặt bằng"}</span></a>)}</div> : null}</div></article>
       </section>
 
-      {photos.length ? <section className="panel section-gap"><div className="panel-head"><div><span className="eyebrow">ẢNH THI CÔNG</span><h2>Ảnh đại diện tự lấy trong tuần</h2></div></div><div className="panel-body"><PhotoGrid photos={photos} /></div></section> : null}
+      {photos.length ? <section className="panel section-gap lazy-section"><div className="panel-head"><div><span className="eyebrow">ẢNH THI CÔNG</span><h2>Ảnh đại diện trong tuần</h2></div></div><div className="panel-body"><PhotoGrid photos={photos} /></div></section> : null}
     </>
   );
 }
