@@ -12,11 +12,11 @@ export default async function FoundationsPage() {
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">UNIQUE FOUNDATION OWNER</span><h1>{user.role === "commander" ? "Danh mục móng toàn dự án" : "Danh mục móng của đội"}</h1><p>Mỗi mã móng chỉ có một đội chủ quản. Backend chặn nhập chồng.</p></div>
+        <div><span className="eyebrow">DANH MỤC MÓNG</span><h1>{user.role === "commander" ? "Danh mục móng toàn dự án" : "Danh mục móng của đội"}</h1><p>Mỗi mã móng được giao cho một đội thi công để tránh nhập trùng và dễ theo dõi tiến độ.</p></div>
         <div className="page-title-icon"><Rows3 size={25} /></div>
       </section>
       <div className="foundation-grid">
-        {foundations.map((foundation) => <article className="foundation-card" key={foundation.id}><div className="foundation-code">{foundation.code}</div><span>{zoneMap.get(foundation.zone_id)?.name || foundation.zone_id}</span><small>{userMap.get(foundation.owner_id)?.full_name}</small><strong>{foundation.current_stage}</strong><div className="foundation-progress"><div className="progress-track"><i style={{ width: `${Math.min(100, foundation.progress)}%` }} /></div><b>{formatPercent(foundation.progress)}%</b></div></article>)}
+        {foundations.map((foundation) => <article className="foundation-card lazy-section" key={foundation.id}><div className="foundation-code">{foundation.code}</div><span>{zoneMap.get(foundation.zone_id)?.name || foundation.zone_id}</span><small>{userMap.get(foundation.owner_id)?.full_name}</small><strong>{foundation.current_stage}</strong><div className="foundation-progress"><div className="progress-track"><i style={{ width: `${Math.min(100, foundation.progress)}%` }} /></div><b>{formatPercent(foundation.progress)}%</b></div></article>)}
       </div>
       {!foundations.length ? <div className="panel empty-state">Chưa có móng nào được nhập.</div> : null}
     </>
