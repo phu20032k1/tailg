@@ -4,13 +4,13 @@ create or replace function public.authenticate_user(p_username text, p_pin text)
 returns table (id uuid, username text, full_name text, role text)
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select u.id, u.username, u.full_name, u.role
   from public.app_users u
   where u.active = true
     and lower(u.username) = lower(trim(p_username))
-    and u.pin_hash = crypt(p_pin, u.pin_hash)
+    and u.pin_hash = extensions.crypt(p_pin, u.pin_hash)
   limit 1;
 $$;
 
@@ -31,7 +31,7 @@ create or replace function public.create_work_entry(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_codes text[];
@@ -61,8 +61,6 @@ begin
     raise exception 'FOUNDATION_REQUIRED';
   end if;
 
-  -- Serialize ownership checks for every foundation code in this transaction.
-  -- This prevents two teams claiming the same new code at the same instant.
   perform pg_advisory_xact_lock(hashtextextended(code, 1843))
   from unnest(v_codes) as code
   order by code;
@@ -128,7 +126,6 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
--- Only the Next.js backend uses these RPCs through the server-side service key.
 revoke all on function public.authenticate_user(text, text) from public, anon, authenticated;
 revoke all on function public.create_work_entry(date, uuid, integer, integer, text, text, text[], numeric, numeric, text, text, text) from public, anon, authenticated;
 grant execute on function public.authenticate_user(text, text) to service_role;
