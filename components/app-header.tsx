@@ -15,7 +15,7 @@ export function AppHeader({ user }: { user: SessionUser }) {
     <header className="app-header">
       <div>
         <span className="eyebrow">
-          {user.role === "commander" ? "CHỈ HUY TRƯỞNG" : "ĐỘI TRƯỞNG"}
+          {user.role === "commander" ? "Chỉ huy trưởng" : "Đội trưởng"}
         </span>
         <h2>{user.fullName}</h2>
       </div>
@@ -23,7 +23,7 @@ export function AppHeader({ user }: { user: SessionUser }) {
       <div className="header-actions">
         <div className="header-chip">
           <Cloud size={16} />
-          <span>Cloud</span>
+          <span>Đã kết nối</span>
         </div>
         <div className="header-chip desktop-only">
           <CalendarDays size={16} />
