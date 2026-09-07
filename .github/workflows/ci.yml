@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, next-supabase-v2]
+    branches: [main, next-supabase-v2, daily-weekly-report-v3]
   pull_request:
     branches: [main]
 
