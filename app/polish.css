@@ -85,6 +85,57 @@ button,input,select,textarea,table,th,td{
 }
 .header-logout-button:hover{background:#fbedee;border-color:#d9b5b8}
 
+/* Thông báo thao tác: rõ ràng, tự biến mất sau vài giây. */
+.operation-popup{
+  position:fixed;
+  top:98px;
+  right:28px;
+  z-index:1200;
+  width:min(390px,calc(100vw - 32px));
+  min-height:78px;
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 32px;
+  gap:12px;
+  align-items:center;
+  padding:14px 14px 14px 16px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #cfe1d6;
+  box-shadow:0 16px 44px rgba(35,55,75,.18);
+  animation:operationPopupIn .2s ease-out;
+}
+.operation-popup.ok{border-left:5px solid #2c8a5b}
+.operation-popup.error{border-left:5px solid #c84444;border-color:#ebd0d0}
+.operation-popup-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#edf7f1;
+  color:#28734f;
+}
+.operation-popup.error .operation-popup-icon{background:#fff0f0;color:#b53d3d}
+.operation-popup-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.operation-popup-copy strong{font-size:16px;color:#1f384b}
+.operation-popup-copy span{font-size:14px;color:#5b6f7f;line-height:1.4}
+.operation-popup-close{
+  width:32px;
+  height:32px;
+  border:0;
+  background:transparent;
+  color:#71818e;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  border-radius:7px;
+}
+.operation-popup-close:hover{background:#f1f4f6;color:#314b5f}
+@keyframes operationPopupIn{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
 /* Ảnh hiện trường: bấm để xem lớn. */
 .photo-open-button{
   position:relative;
@@ -202,6 +253,7 @@ button,input,select,textarea,table,th,td{
   .header-logout-button{min-height:39px;padding:0 10px;font-size:13px}
   .user-avatar{display:none}
   .nav-link{font-size:14px}
+  .operation-popup{top:auto;right:16px;bottom:18px;left:16px;width:auto}
   .photo-open-button img{height:220px}
   .photo-lightbox{padding:16px}
   .photo-lightbox-close{top:12px;right:12px}
