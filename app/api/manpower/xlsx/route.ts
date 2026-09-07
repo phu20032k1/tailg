@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
   sheet.eachRow({ includeEmpty: false }, (excelRow) => {
     excelRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.border = { top: border, left: border, bottom: border, right: border };
-      cell.alignment = { ...cell.alignment, vertical: "middle", horizontal: cell.col <= 2 ? "left" : "center", wrapText: true };
+      const columnIndex = typeof cell.col === "number" ? cell.col : Number(cell.col);
+      cell.alignment = { ...cell.alignment, vertical: "middle", horizontal: columnIndex <= 2 ? "left" : "center", wrapText: true };
     });
   });
   sheet.getRow(2).eachCell((cell) => { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF7" } }; });
