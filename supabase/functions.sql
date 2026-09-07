@@ -1,4 +1,7 @@
--- Run after schema.sql and seed.sql.
+-- TAILG database functions. Safe to run repeatedly after schema.sql + seed.sql.
+
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create or replace function public.authenticate_user(p_username text, p_pin text)
 returns table (id uuid, username text, full_name text, role text)
@@ -10,7 +13,7 @@ as $$
   from public.app_users u
   where u.active = true
     and lower(u.username) = lower(trim(p_username))
-    and u.pin_hash = extensions.crypt(p_pin, u.pin_hash)
+    and u.pin_hash = crypt(p_pin, u.pin_hash)
   limit 1;
 $$;
 
@@ -118,8 +121,8 @@ $$;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
-  'site-photos', 'site-photos', false, 10485760,
-  array['image/jpeg','image/png','image/webp','image/heic','image/heif']
+  'site-photos', 'site-photos', false, 31457280,
+  array['image/jpeg','image/png','image/webp','image/heic','image/heif','application/pdf']
 )
 on conflict (id) do update set
   public = excluded.public,
