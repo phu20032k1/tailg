@@ -4,6 +4,16 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 let client: SupabaseClient | null = null;
 let bucketReady = false;
 
+const STORAGE_FILE_LIMIT = 30 * 1024 * 1024;
+const STORAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf"
+];
+
 function cleanEnvValue(raw: string | undefined, key: string) {
   let value = (raw || "").trim();
   if (!value) return "";
@@ -79,15 +89,23 @@ export async function ensureStorageBucket() {
   const { data: buckets, error: listError } = await db.storage.listBuckets();
   if (listError) throw listError;
 
-  if (!buckets.some((bucket) => bucket.id === STORAGE_BUCKET)) {
-    const { error: createError } = await db.storage.createBucket(STORAGE_BUCKET, {
-      public: false,
-      fileSizeLimit: 10 * 1024 * 1024,
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
-    });
+  const exists = buckets.some((bucket) => bucket.id === STORAGE_BUCKET);
+  const options = {
+    public: false,
+    fileSizeLimit: STORAGE_FILE_LIMIT,
+    allowedMimeTypes: STORAGE_MIME_TYPES
+  };
+
+  if (!exists) {
+    const { error: createError } = await db.storage.createBucket(STORAGE_BUCKET, options);
     if (createError && !createError.message.toLowerCase().includes("already exists")) {
       throw createError;
     }
+  } else {
+    // Keep an existing bucket aligned with the application requirements. This
+    // fixes older pilot buckets that allowed images only or used a 10 MB limit.
+    const { error: updateError } = await db.storage.updateBucket(STORAGE_BUCKET, options);
+    if (updateError) throw updateError;
   }
 
   bucketReady = true;
