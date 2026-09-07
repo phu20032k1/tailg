@@ -11,9 +11,7 @@ const C = {
   navy: "163A5F",
   text: "243746",
   muted: "607D8B",
-  white: "FFFFFF",
-  green: "3D9B62",
-  pale: "F8FBFD"
+  white: "FFFFFF"
 };
 
 function formatDate(date: string) {
@@ -74,14 +72,8 @@ export async function GET(request: NextRequest) {
   pptx.company = "Công ty Cổ phần Đầu tư và Xây dựng số 18.3";
   pptx.subject = "TAILG weekly construction progress report";
   pptx.title = `TAILG Weekly Report ${from} - ${to}`;
-  pptx.lang = "vi-VN";
-  pptx.theme = {
-    headFontFace: "Arial",
-    bodyFontFace: "Arial",
-    lang: "vi-VN"
-  };
+  pptx.theme = { headFontFace: "Arial", bodyFontFace: "Arial" };
 
-  // Cover
   {
     const slide = pptx.addSlide();
     slide.background = { color: C.bg };
@@ -91,12 +83,11 @@ export async function GET(request: NextRequest) {
     slide.addText("项目进展更新会议", { x: 1.2, y: 1.8, w: 10.9, h: 0.5, fontSize: 20, bold: true, color: C.red, align: "center" });
     slide.addText("Chủ đầu tư: Công ty TNHH Khoa học và Công nghệ TAILG (Việt Nam)", { x: 0.75, y: 2.55, w: 5.8, h: 0.4, fontSize: 11, color: C.text });
     slide.addText("Nhà thầu thi công: Công ty Cổ phần Đầu tư và Xây dựng số 18.3 (LICOGI18.3)", { x: 6.75, y: 2.55, w: 5.8, h: 0.55, fontSize: 11, color: C.text, align: "right" });
-    slide.addShape(pptx.ShapeType.roundRect, { x: 1.35, y: 3.55, w: 10.65, h: 1.35, rectRadius: 0.08, fill: { color: C.white, transparency: 5 }, line: { color: "C7DCEB" } });
+    slide.addShape(pptx.ShapeType.roundRect, { x: 1.35, y: 3.55, w: 10.65, h: 1.35, fill: { color: C.white, transparency: 5 }, line: { color: "C7DCEB" } });
     slide.addText(`BÁO CÁO TUẦN ${formatDate(from)} → ${formatDate(to)}`, { x: 1.65, y: 3.93, w: 10.05, h: 0.5, fontSize: 20, bold: true, color: C.navy, align: "center" });
     slide.addText(`Ngày lập: ${formatDate(to)}`, { x: 4.5, y: 5.65, w: 4.3, h: 0.35, fontSize: 11, color: C.text, align: "center" });
   }
 
-  // Agenda
   {
     const slide = baseSlide(pptx, "NỘI DUNG CUỘC HỌP", "会议内容");
     const items = [
@@ -105,12 +96,11 @@ export async function GET(request: NextRequest) {
       "III. CÔNG TÁC AN TOÀN / 安全工作",
       "IV. CÁC VẤN ĐỀ KHÁC / 其他事项"
     ];
-    slide.addText(items.map((text) => ({ text, options: { bullet: { indent: 18 } } })), { x: 1.1, y: 1.55, w: 11.0, h: 3.6, fontSize: 16, color: C.red, breakLine: true, paraSpaceAfterPt: 16 });
+    slide.addText(items.map((text) => ({ text, options: { bullet: { indent: 18 } } })), { x: 1.1, y: 1.55, w: 11.0, h: 3.6, fontSize: 16, color: C.red, breakLine: true, paraSpaceAfter: 16 });
   }
 
   sectionSlide(pptx, "I. CẬP NHẬT TIẾN ĐỘ TẠI CÔNG TRƯỜNG", "现场进度更新");
 
-  // Manpower summary
   {
     const slide = baseSlide(pptx, "1. Nhân lực và máy móc / 人力与机械");
     const leaders = [...new Map(reports.map((report) => [report.leader_id, report.leader])).values()].filter(Boolean);
@@ -126,7 +116,8 @@ export async function GET(request: NextRequest) {
       const equipment = report?.equipment.filter((item) => item.quantity > 0).map((item) => `${item.equipment_name}: ${item.quantity}`).join(", ") || "-";
       rows.push([leader.full_name, report?.workers || 0, report?.technical_staff || 0, machineOperators, security, equipment]);
     }
-    slide.addTable(rows, {
+    const tableRows = rows.map((row) => row.map((value) => ({ text: String(value) })));
+    slide.addTable(tableRows, {
       x: 0.65, y: 1.2, w: 12.05, h: 4.8,
       border: { color: "B8CDD9", width: 0.8 },
       fill: C.white,
@@ -141,14 +132,13 @@ export async function GET(request: NextRequest) {
     slide.addText(`Ngày chốt gần nhất: ${latestDate ? formatDate(latestDate) : "Chưa có dữ liệu"}`, { x: 0.75, y: 6.25, w: 4.2, h: 0.25, fontSize: 9, color: C.muted });
   }
 
-  // Main works + photos, two slides max
   const mainTasks = reports.flatMap((report) => report.tasks.filter((task) => task.kind === "main").map((task) => ({ ...task, leader: report.leader, reportDate: report.report_date })));
   const workPhotos = reports.flatMap((report) => report.photos.filter((photo) => photo.photo_type === "work")).slice(0, 8);
   const photoData = (await Promise.all(workPhotos.map((photo) => storageImageData(photo.storage_path)))).filter(Boolean) as string[];
   for (let page = 0; page < Math.max(1, Math.ceil(Math.max(mainTasks.length, photoData.length) / 8)); page++) {
     const slide = baseSlide(pptx, `2.${page + 1}. Công tác chính / 主要工作`);
     const pageTasks = mainTasks.slice(page * 8, page * 8 + 8);
-    slide.addText(pageTasks.length ? pageTasks.map((task) => ({ text: `${task.area_label ? `${task.area_label}: ` : ""}${task.description_vi}${task.leader?.full_name ? ` · ${task.leader.full_name}` : ""}`, options: { bullet: { indent: 16 } } })) : [{ text: "Chưa có dữ liệu công việc.", options: {} }], { x: 0.65, y: 1.15, w: 5.65, h: 5.65, fontSize: 11.5, color: C.text, breakLine: true, paraSpaceAfterPt: 8, valign: "top" });
+    slide.addText(pageTasks.length ? pageTasks.map((task) => ({ text: `${task.area_label ? `${task.area_label}: ` : ""}${task.description_vi}${task.leader?.full_name ? ` · ${task.leader.full_name}` : ""}`, options: { bullet: { indent: 16 } } })) : [{ text: "Chưa có dữ liệu công việc.", options: {} }], { x: 0.65, y: 1.15, w: 5.65, h: 5.65, fontSize: 11.5, color: C.text, breakLine: true, paraSpaceAfter: 8, valign: "top" });
     const imgs = photoData.slice(page * 4, page * 4 + 4);
     imgs.forEach((data, index) => {
       const col = index % 2;
@@ -158,7 +148,6 @@ export async function GET(request: NextRequest) {
     if (!imgs.length) slide.addText("Ảnh thi công sẽ tự lấy từ báo cáo ngày sau khi các đội upload ảnh.", { x: 6.75, y: 2.8, w: 5.4, h: 0.9, fontSize: 14, color: C.muted, align: "center" });
   }
 
-  // Plan/cropped assets
   for (const asset of assets || []) {
     if (asset.asset_type !== "plan") continue;
     const data = await storageImageData(asset.storage_path);
@@ -170,13 +159,12 @@ export async function GET(request: NextRequest) {
 
   sectionSlide(pptx, "II. KẾ HOẠCH VÀ TIẾN ĐỘ CÔNG VIỆC TUẦN TỚI", "下周工作计划及进展");
 
-  // Draft next-week plan from latest report date
   {
     const slide = baseSlide(pptx, "II. Kế hoạch và tiến độ công việc tuần tới", "下周工作计划及进展");
     const latestDate = reports.map((report) => report.report_date).sort().at(-1);
     const latestTasks = reports.filter((report) => report.report_date === latestDate).flatMap((report) => report.tasks.filter((task) => task.kind === "main").map((task) => ({ ...task, leader: report.leader })));
     const unique = [...new Map(latestTasks.map((task) => [`${task.area_label}|${task.description_vi}`, task])).values()].slice(0, 14);
-    slide.addText(unique.length ? unique.map((task) => ({ text: `${task.area_label ? `${task.area_label}: ` : ""}${task.description_vi}`, options: { bullet: { indent: 16 } } })) : [{ text: "Chưa có dữ liệu để tạo bản nháp kế hoạch.", options: {} }], { x: 0.9, y: 1.35, w: 11.5, h: 4.9, fontSize: 13, color: C.text, breakLine: true, paraSpaceAfterPt: 10 });
+    slide.addText(unique.length ? unique.map((task) => ({ text: `${task.area_label ? `${task.area_label}: ` : ""}${task.description_vi}`, options: { bullet: { indent: 16 } } })) : [{ text: "Chưa có dữ liệu để tạo bản nháp kế hoạch.", options: {} }], { x: 0.9, y: 1.35, w: 11.5, h: 4.9, fontSize: 13, color: C.text, breakLine: true, paraSpaceAfter: 10 });
     slide.addShape(pptx.ShapeType.roundRect, { x: 0.9, y: 6.25, w: 11.5, h: 0.48, fill: { color: "FFF4D6" }, line: { color: "E7C86E" } });
     slide.addText("BẢN NHÁP TỰ ĐỘNG: Chỉ huy trưởng rà soát/chỉnh nội dung trước khi gửi Chủ đầu tư.", { x: 1.05, y: 6.35, w: 11.2, h: 0.22, fontSize: 9.5, bold: true, color: "8A6500", align: "center" });
   }
@@ -184,7 +172,7 @@ export async function GET(request: NextRequest) {
   sectionSlide(pptx, "III. CÔNG TÁC AN TOÀN", "安全工作");
   {
     const slide = baseSlide(pptx, "III. Công tác an toàn / 安全工作");
-    slide.addText("Phần này để Ban điều hành bổ sung nội dung an toàn và ảnh chuyên đề trước khi phát hành chính thức.", { x: 1.1, y: 2.35, w: 11.0, h: 1.0, fontSize: 18, color: C.text, align: "center", valign: "mid" });
+    slide.addText("Phần này để Ban điều hành bổ sung nội dung an toàn và ảnh chuyên đề trước khi phát hành chính thức.", { x: 1.1, y: 2.35, w: 11.0, h: 1.0, fontSize: 18, color: C.text, align: "center", valign: "middle" });
   }
 
   sectionSlide(pptx, "IV. CÁC VẤN ĐỀ KHÁC", "其他事项");
@@ -194,7 +182,7 @@ export async function GET(request: NextRequest) {
       ...(report.issue_text ? [`${report.leader?.full_name || "Đội"}: ${report.issue_text}`] : []),
       ...report.tasks.filter((task) => task.kind === "other").map((task) => `${report.leader?.full_name || "Đội"}: ${task.description_vi}`)
     ]).slice(0, 16);
-    slide.addText(issues.length ? issues.map((text) => ({ text, options: { bullet: { indent: 16 } } })) : [{ text: "Không có nội dung khác được ghi nhận trong khoảng báo cáo.", options: {} }], { x: 0.95, y: 1.4, w: 11.4, h: 4.9, fontSize: 12.5, color: C.text, breakLine: true, paraSpaceAfterPt: 9 });
+    slide.addText(issues.length ? issues.map((text) => ({ text, options: { bullet: { indent: 16 } } })) : [{ text: "Không có nội dung khác được ghi nhận trong khoảng báo cáo.", options: {} }], { x: 0.95, y: 1.4, w: 11.4, h: 4.9, fontSize: 12.5, color: C.text, breakLine: true, paraSpaceAfter: 9 });
   }
 
   {
@@ -208,7 +196,7 @@ export async function GET(request: NextRequest) {
 
   const output = await pptx.write({ outputType: "nodebuffer" });
   const buffer = Buffer.isBuffer(output) ? output : Buffer.from(output as ArrayBuffer);
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       "content-disposition": `attachment; filename="TAILG-weekly-${from}-${to}.pptx"`
