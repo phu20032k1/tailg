@@ -1,24 +1,16 @@
 import { Rows3 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getFoundations, getUsers, getZones } from "@/lib/data";
-import { formatPercent } from "@/lib/format";
+import { FoundationManager } from "@/components/foundation-manager";
 
 export default async function FoundationsPage() {
   const user = await requireUser();
   const [foundations, zones, users] = await Promise.all([getFoundations(user), getZones(), getUsers()]);
-  const zoneMap = new Map(zones.map((zone) => [zone.id, zone]));
-  const userMap = new Map(users.map((item) => [item.id, item]));
-
-  return (
-    <>
-      <section className="page-title-row">
-        <div><span className="eyebrow">DANH MỤC MÓNG</span><h1>{user.role === "commander" ? "Danh mục móng toàn dự án" : "Danh mục móng của đội"}</h1><p>Mỗi mã móng được giao cho một đội thi công để tránh nhập trùng và dễ theo dõi tiến độ.</p></div>
-        <div className="page-title-icon"><Rows3 size={25} /></div>
-      </section>
-      <div className="foundation-grid">
-        {foundations.map((foundation) => <article className="foundation-card lazy-section" key={foundation.id}><div className="foundation-code">{foundation.code}</div><span>{zoneMap.get(foundation.zone_id)?.name || foundation.zone_id}</span><small>{userMap.get(foundation.owner_id)?.full_name}</small><strong>{foundation.current_stage}</strong><div className="foundation-progress"><div className="progress-track"><i style={{ width: `${Math.min(100, foundation.progress)}%` }} /></div><b>{formatPercent(foundation.progress)}%</b></div></article>)}
-      </div>
-      {!foundations.length ? <div className="panel empty-state">Chưa có móng nào được nhập.</div> : null}
-    </>
-  );
+  return <>
+    <section className="page-title-row">
+      <div><span className="eyebrow">DANH MỤC MÓNG</span><h1>{user.role === "commander" ? "Quản lý móng toàn dự án" : "Móng được giao cho đội"}</h1><p>{user.role === "commander" ? "Thêm mã móng, giao đội phụ trách và theo dõi tiến độ tại một nơi." : "Theo dõi danh sách móng, công việc và tiến độ thuộc phạm vi đội phụ trách."}</p></div>
+      <div className="page-title-icon"><Rows3 size={25}/></div>
+    </section>
+    <FoundationManager foundations={foundations} zones={zones} users={users} commander={user.role === "commander"}/>
+  </>;
 }
