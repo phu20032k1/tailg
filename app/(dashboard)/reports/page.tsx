@@ -1,26 +1,50 @@
-import { Camera, Cog, HardHat, History, ListChecks } from "lucide-react";
+import { CalendarDays, Camera, Cog, HardHat, History, ListChecks, Search } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { getReportHistory } from "@/lib/data";
+import { getReportHistory, getReportRange } from "@/lib/data";
 import { formatDate, formatPercent } from "@/lib/format";
 import { PhotoGrid } from "@/components/photo-grid";
+import { ReportActions } from "@/components/report-actions";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const user = await requireUser();
-  const reports = await getReportHistory(user, 80);
+  const query = await searchParams;
+  const hasRange = Boolean(query.from || query.to);
+  const from = query.from || "2026-01-01";
+  const to = query.to || "2099-12-31";
+  const reports = hasRange ? await getReportRange(user, from, to) : await getReportHistory(user, 80);
 
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">LỊCH SỬ DỮ LIỆU</span><h1>Nhật ký báo cáo ngày</h1><p>{user.role === "commander" ? "Toàn bộ báo cáo nhân lực, máy móc, công việc và ảnh của 6 đội." : "Chỉ hiển thị báo cáo của đội bạn."}</p></div>
+        <div>
+          <span className="eyebrow">NHẬT KÝ THI CÔNG</span>
+          <h1>Lịch sử báo cáo ngày</h1>
+          <p>{user.role === "commander" ? "Xem, lọc theo ngày, chỉnh sửa hoặc xóa báo cáo của 6 đội." : "Xem, lọc theo ngày và chỉnh sửa báo cáo của đội bạn."}</p>
+        </div>
         <div className="page-title-icon"><History size={25} /></div>
       </section>
 
-      <div className="history-stack">
+      <section className="panel history-filter-panel">
+        <div className="panel-body">
+          <form className="history-calendar-filter" method="get">
+            <div className="calendar-filter-title"><CalendarDays size={19} /><strong>Lọc theo thời gian</strong></div>
+            <label><span>Từ ngày</span><input type="date" name="from" defaultValue={query.from || ""} /></label>
+            <label><span>Đến ngày</span><input type="date" name="to" defaultValue={query.to || ""} /></label>
+            <button className="button secondary" type="submit"><Search size={17} /> Xem báo cáo</button>
+            {hasRange ? <a className="button ghost" href="/reports">Bỏ lọc</a> : null}
+          </form>
+        </div>
+      </section>
+
+      <div className="history-stack section-gap">
         {reports.map((report) => (
-          <article className="panel report-card" key={report.id}>
+          <article className="panel report-card lazy-section" key={report.id}>
             <div className="report-card-head">
               <div><span className="eyebrow">{formatDate(report.report_date)}</span><h2>{report.leader?.full_name || "Đội thi công"}</h2></div>
-              <div className="headcount-chip"><HardHat size={17} /><strong>{report.workers}</strong> công nhân <span>+ {report.technical_staff} kỹ thuật</span></div>
+              <div className="report-card-tools">
+                <div className="headcount-chip"><HardHat size={17} /><strong>{report.workers}</strong> công nhân <span>+ {report.technical_staff} kỹ thuật</span></div>
+                <ReportActions reportId={report.id} />
+              </div>
             </div>
 
             {report.labor.length ? <div className="report-detail-grid"><div><div className="mini-heading"><HardHat size={16} /> Nhân lực</div><div className="compact-list">{report.labor.map((item) => <span key={item.id}><b>{item.label}{item.crew_name ? ` · ${item.crew_name}` : ""}</b><strong>{item.headcount}</strong></span>)}</div></div><div><div className="mini-heading"><Cog size={16} /> Máy móc</div><div className="compact-list">{report.equipment.map((item) => <span key={item.id}><b>{item.equipment_name}</b><strong>{item.quantity} {item.unit}</strong></span>)}{!report.equipment.length ? <small>Không ghi nhận thiết bị.</small> : null}</div></div></div> : null}
@@ -33,7 +57,7 @@ export default async function ReportsPage() {
             {report.raw_message ? <details className="raw-message"><summary>Xem tin nhắn gốc</summary><pre>{report.raw_message}</pre></details> : null}
           </article>
         ))}
-        {!reports.length ? <div className="panel empty-state">Chưa có báo cáo.</div> : null}
+        {!reports.length ? <div className="panel empty-state">Không có báo cáo trong khoảng thời gian đã chọn.</div> : null}
       </div>
     </>
   );
