@@ -13,11 +13,11 @@ export default async function NewReportPage() {
         <div>
           <span className="eyebrow">BÁO CÁO TRƯỚC 07:30</span>
           <h1>Báo cáo thi công hằng ngày</h1>
-          <p>Dán tin nhắn nhóm dự án → rà lại nhân lực, máy móc, công việc → tải ảnh đại diện → lưu một lần.</p>
+          <p>Dán tin nhắn, rà lại nhân lực và máy móc, cập nhật móng đang thi công, thêm ảnh rồi gửi báo cáo.</p>
         </div>
         <div className="page-title-icon"><ClipboardPlus size={25} /></div>
       </section>
-      <div className="panel"><div className="panel-body"><DailyReportForm user={user} leaders={meta.leaders} /></div></div>
+      <div className="panel"><div className="panel-body"><DailyReportForm user={user} leaders={meta.leaders} foundations={meta.foundations} /></div></div>
     </>
   );
 }
