@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
+import { getSessionSecretSource } from "@/lib/auth";
+import { getSupabaseAdmin, getSupabaseConfig, STORAGE_BUCKET } from "@/lib/supabase/admin";
 
 export async function GET() {
-  const config = {
-    supabaseUrl: Boolean(process.env.SUPABASE_URL),
-    supabaseSecret: Boolean(
-      process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
-    ),
-    sessionSecret: Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32),
-    storageBucket: STORAGE_BUCKET
-  };
+  let resolvedSupabaseOrigin: string | null = null;
+  let sessionSecretSource: ReturnType<typeof getSessionSecretSource> = "missing";
 
   try {
+    const { url } = getSupabaseConfig();
+    resolvedSupabaseOrigin = url;
+    sessionSecretSource = getSessionSecretSource();
+
     const db = getSupabaseAdmin();
     const { count, error: dbError } = await db
       .from("app_users")
@@ -22,21 +21,41 @@ export async function GET() {
     const { data: buckets, error: storageError } = await db.storage.listBuckets();
     if (storageError) throw storageError;
 
-    return NextResponse.json({
-      ok: config.sessionSecret,
-      database: "connected",
-      users: count ?? 0,
-      storage: buckets.some((bucket) => bucket.id === STORAGE_BUCKET)
-        ? "connected"
-        : `bucket ${STORAGE_BUCKET} missing`,
-      config
-    }, { status: config.sessionSecret ? 200 : 500 });
+    const storageConnected = buckets.some((bucket) => bucket.id === STORAGE_BUCKET);
+    const sessionReady = sessionSecretSource !== "missing";
+
+    return NextResponse.json(
+      {
+        ok: sessionReady && storageConnected,
+        database: "connected",
+        users: count ?? 0,
+        storage: storageConnected ? "connected" : `bucket ${STORAGE_BUCKET} missing`,
+        config: {
+          supabaseUrl: true,
+          supabaseSecret: true,
+          resolvedSupabaseOrigin,
+          sessionSecret: sessionReady,
+          sessionSecretSource,
+          storageBucket: STORAGE_BUCKET
+        }
+      },
+      { status: sessionReady && storageConnected ? 200 : 500 }
+    );
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         error: error instanceof Error ? error.message : "Unknown health check error",
-        config
+        config: {
+          supabaseUrl: Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
+          supabaseSecret: Boolean(
+            process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+          ),
+          resolvedSupabaseOrigin,
+          sessionSecret: getSessionSecretSource() !== "missing",
+          sessionSecretSource: getSessionSecretSource(),
+          storageBucket: STORAGE_BUCKET
+        }
       },
       { status: 500 }
     );
