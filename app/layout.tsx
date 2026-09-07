@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./v3.css";
 import "./bright-theme.css";
+import "./polish.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
-  description: "Nền tảng báo cáo ngày, nhân lực, máy móc, công việc, ảnh hiện trường và báo cáo tuần dự án TAILG."
+  description: "Báo cáo thi công hằng ngày và tổng hợp điều hành dự án TAILG."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
