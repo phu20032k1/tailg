@@ -21,46 +21,45 @@ type UserRow = {
 
 export async function getUsers() {
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("app_users")
-    .select("id,username,full_name,role")
-    .eq("active", true)
-    .order("full_name");
+  const { data, error } = await db.from("app_users").select("id,username,full_name,role").eq("active", true).order("full_name");
   if (error) throw error;
   return (data || []) as UserRow[];
 }
 
 export async function getZones() {
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("zones")
-    .select("id,name,group_name,scope_label,owner_id,baseline_progress,sort_order")
-    .order("sort_order");
+  const { data, error } = await db.from("zones").select("id,name,group_name,scope_label,owner_id,baseline_progress,sort_order").order("sort_order");
   if (error) throw error;
   return (data || []) as Zone[];
 }
 
 export async function getMilestones() {
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("project_milestones")
-    .select("id,label,start_date,finish_date,note,sort_order")
-    .order("sort_order");
+  const { data, error } = await db.from("project_milestones").select("id,label,start_date,finish_date,note,sort_order").order("sort_order");
   if (error) throw error;
   return data || [];
 }
 
+export async function getFoundations(user: SessionUser) {
+  const db = getSupabaseAdmin();
+  let query = db.from("foundations").select("id,code,zone_id,owner_id,current_stage,progress,status,first_work_date,last_work_date").order("code");
+  if (user.role === "leader") query = query.eq("owner_id", user.id);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []) as Foundation[];
+}
+
 export async function getFormMeta(user: SessionUser) {
-  const [zones, users] = await Promise.all([getZones(), getUsers()]);
+  const [zones, users, foundations] = await Promise.all([getZones(), getUsers(), getFoundations(user)]);
   return {
     zones: user.role === "commander" ? zones : zones.filter((zone) => zone.owner_id === user.id),
-    leaders: user.role === "commander" ? users.filter((item) => item.role === "leader") : []
+    leaders: user.role === "commander" ? users.filter((item) => item.role === "leader") : [],
+    foundations
   };
 }
 
 async function listReports(user: SessionUser, limit = 50, from?: string, to?: string) {
   const db = getSupabaseAdmin();
-
   function applyFilters(query: any) {
     let next = query;
     if (user.role === "leader") next = next.eq("leader_id", user.id);
@@ -68,52 +67,23 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
     if (to) next = next.lte("report_date", to);
     return next;
   }
-
-  let query: any = db
-    .from("daily_reports")
-    .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,created_at,updated_at")
-    .order("report_date", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+  let query: any = db.from("daily_reports").select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,created_at,updated_at").order("report_date", { ascending: false }).order("updated_at", { ascending: false }).limit(limit);
   query = applyFilters(query);
-
   const primary = await query;
   if (!primary.error) return (primary.data || []) as ReportRow[];
-
-  const missingV3Columns =
-    primary.error.message?.includes("raw_message") ||
-    primary.error.message?.includes("submitted_at") ||
-    primary.error.code === "42703";
+  const missingV3Columns = primary.error.message?.includes("raw_message") || primary.error.message?.includes("submitted_at") || primary.error.code === "42703";
   if (!missingV3Columns) throw primary.error;
-
-  // Old Pilot databases do not yet have raw_message/submitted_at. Keep the
-  // dashboard and history pages working while /api/health clearly reports that
-  // the V3 migration still needs to be applied.
-  let fallback: any = db
-    .from("daily_reports")
-    .select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at")
-    .order("report_date", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+  let fallback: any = db.from("daily_reports").select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at").order("report_date", { ascending: false }).order("updated_at", { ascending: false }).limit(limit);
   fallback = applyFilters(fallback);
   const legacy = await fallback;
   if (legacy.error) throw legacy.error;
-
-  return (legacy.data || []).map((report: any) => ({
-    ...report,
-    raw_message: null,
-    submitted_at: report.updated_at || report.created_at
-  })) as ReportRow[];
+  return (legacy.data || []).map((report: any) => ({ ...report, raw_message: null, submitted_at: report.updated_at || report.created_at })) as ReportRow[];
 }
 
 async function listWorkItems(reportIds: string[]) {
   if (!reportIds.length) return [] as WorkItemRow[];
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("work_items")
-    .select("id,report_id,zone_id,stage,quantity,unit,progress,foundation_codes,note,created_at")
-    .in("report_id", reportIds)
-    .order("created_at", { ascending: false });
+  const { data, error } = await db.from("work_items").select("id,report_id,zone_id,stage,quantity,unit,progress,foundation_codes,note,created_at").in("report_id", reportIds).order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []) as WorkItemRow[];
 }
@@ -121,63 +91,34 @@ async function listWorkItems(reportIds: string[]) {
 async function listLabor(reportIds: string[]) {
   if (!reportIds.length) return [] as LaborEntryRow[];
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("report_labor_entries")
-    .select("id,report_id,category_code,label,crew_name,headcount,counts_as_worker,sort_order")
-    .in("report_id", reportIds)
-    .order("sort_order");
-  if (error) {
-    if (error.message?.includes("report_labor_entries")) return [] as LaborEntryRow[];
-    throw error;
-  }
+  const { data, error } = await db.from("report_labor_entries").select("id,report_id,category_code,label,crew_name,headcount,counts_as_worker,sort_order").in("report_id", reportIds).order("sort_order");
+  if (error) { if (error.message?.includes("report_labor_entries")) return [] as LaborEntryRow[]; throw error; }
   return (data || []) as LaborEntryRow[];
 }
 
 async function listEquipment(reportIds: string[]) {
   if (!reportIds.length) return [] as EquipmentEntryRow[];
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("report_equipment_entries")
-    .select("id,report_id,equipment_name,quantity,unit,note,sort_order")
-    .in("report_id", reportIds)
-    .order("sort_order");
-  if (error) {
-    if (error.message?.includes("report_equipment_entries")) return [] as EquipmentEntryRow[];
-    throw error;
-  }
+  const { data, error } = await db.from("report_equipment_entries").select("id,report_id,equipment_name,quantity,unit,note,sort_order").in("report_id", reportIds).order("sort_order");
+  if (error) { if (error.message?.includes("report_equipment_entries")) return [] as EquipmentEntryRow[]; throw error; }
   return (data || []) as EquipmentEntryRow[];
 }
 
 async function listTasks(reportIds: string[]) {
   if (!reportIds.length) return [] as ReportTaskRow[];
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("report_tasks")
-    .select("id,report_id,kind,area_label,description_vi,description_zh,sort_order")
-    .in("report_id", reportIds)
-    .order("sort_order");
-  if (error) {
-    if (error.message?.includes("report_tasks")) return [] as ReportTaskRow[];
-    throw error;
-  }
+  const { data, error } = await db.from("report_tasks").select("id,report_id,kind,area_label,description_vi,description_zh,sort_order").in("report_id", reportIds).order("sort_order");
+  if (error) { if (error.message?.includes("report_tasks")) return [] as ReportTaskRow[]; throw error; }
   return (data || []) as ReportTaskRow[];
 }
 
 async function listPhotos(reportIds: string[]) {
   if (!reportIds.length) return [] as PhotoRow[];
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("report_photos")
-    .select("id,report_id,storage_path,caption,area_label,photo_type,created_at")
-    .in("report_id", reportIds)
-    .order("created_at", { ascending: false });
+  const { data, error } = await db.from("report_photos").select("id,report_id,storage_path,caption,area_label,photo_type,created_at").in("report_id", reportIds).order("created_at", { ascending: false });
   if (error) {
     if (error.message?.includes("area_label") || error.message?.includes("photo_type")) {
-      const fallback = await db
-        .from("report_photos")
-        .select("id,report_id,storage_path,caption,created_at")
-        .in("report_id", reportIds)
-        .order("created_at", { ascending: false });
+      const fallback = await db.from("report_photos").select("id,report_id,storage_path,caption,created_at").in("report_id", reportIds).order("created_at", { ascending: false });
       if (fallback.error) throw fallback.error;
       return (fallback.data || []).map((photo) => ({ ...photo, area_label: null, photo_type: "work" })) as PhotoRow[];
     }
@@ -196,20 +137,10 @@ export async function signedPhotoUrl(path: string, expiresIn = 60 * 30) {
 async function enrichReports(reports: ReportRow[]) {
   const [users, zones] = await Promise.all([getUsers(), getZones()]);
   const reportIds = reports.map((report) => report.id);
-  const [items, labor, equipment, tasks, photos] = await Promise.all([
-    listWorkItems(reportIds),
-    listLabor(reportIds),
-    listEquipment(reportIds),
-    listTasks(reportIds),
-    listPhotos(reportIds)
-  ]);
-
+  const [items, labor, equipment, tasks, photos] = await Promise.all([listWorkItems(reportIds), listLabor(reportIds), listEquipment(reportIds), listTasks(reportIds), listPhotos(reportIds)]);
   const userMap = new Map(users.map((item) => [item.id, item]));
   const zoneMap = new Map(zones.map((zone) => [zone.id, zone]));
-  const photoEntries = await Promise.all(
-    photos.slice(0, 120).map(async (photo) => ({ ...photo, signedUrl: await signedPhotoUrl(photo.storage_path) }))
-  );
-
+  const photoEntries = await Promise.all(photos.slice(0, 120).map(async (photo) => ({ ...photo, signedUrl: await signedPhotoUrl(photo.storage_path) })));
   return reports.map((report) => ({
     ...report,
     leader: userMap.get(report.leader_id),
@@ -221,34 +152,11 @@ async function enrichReports(reports: ReportRow[]) {
   }));
 }
 
-export async function getReportHistory(user: SessionUser, limit = 40) {
-  return enrichReports(await listReports(user, limit));
-}
-
-export async function getReportRange(user: SessionUser, from: string, to: string) {
-  return enrichReports(await listReports(user, 500, from, to));
-}
-
-export async function getFoundations(user: SessionUser) {
-  const db = getSupabaseAdmin();
-  let query = db
-    .from("foundations")
-    .select("id,code,zone_id,owner_id,current_stage,progress,status,first_work_date,last_work_date")
-    .order("code");
-  if (user.role === "leader") query = query.eq("owner_id", user.id);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []) as Foundation[];
-}
+export async function getReportHistory(user: SessionUser, limit = 40) { return enrichReports(await listReports(user, limit)); }
+export async function getReportRange(user: SessionUser, from: string, to: string) { return enrichReports(await listReports(user, 500, from, to)); }
 
 export async function getDashboardData(user: SessionUser) {
-  const [reports, foundations, users, zones, milestones] = await Promise.all([
-    listReports(user, 14),
-    getFoundations(user),
-    getUsers(),
-    getZones(),
-    getMilestones()
-  ]);
+  const [reports, foundations, users, zones, milestones] = await Promise.all([listReports(user, 14), getFoundations(user), getUsers(), getZones(), getMilestones()]);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
   const todayReports = reports.filter((report) => report.report_date === today);
   const workersToday = todayReports.reduce((sum, report) => sum + Number(report.workers || 0), 0);
@@ -261,18 +169,7 @@ export async function getDashboardData(user: SessionUser) {
   });
   const averageProgress = zoneProgress.length ? zoneProgress.reduce((sum, zone) => sum + zone.progress, 0) / zoneProgress.length : 0;
   const reportsWithDetails = await getReportHistory(user, 8);
-  return {
-    today,
-    workersToday,
-    technicalToday,
-    teamsReported: new Set(todayReports.map((report) => report.leader_id)).size,
-    foundationCount: foundations.length,
-    averageProgress,
-    users,
-    zones: zoneProgress,
-    recentReports: reportsWithDetails,
-    milestones
-  };
+  return { today, workersToday, technicalToday, teamsReported: new Set(todayReports.map((report) => report.leader_id)).size, foundationCount: foundations.length, averageProgress, users, zones: zoneProgress, recentReports: reportsWithDetails, milestones };
 }
 
 export async function getTeamSummary() {
@@ -285,21 +182,10 @@ export async function getTeamSummary() {
   ]);
   if (reportError) throw reportError;
   if (foundationError) throw foundationError;
-
   return users.filter((item) => item.role === "leader").map((leader) => {
     const teamFoundations = (foundations || []).filter((foundation) => foundation.owner_id === leader.id);
-    const progress = teamFoundations.length
-      ? teamFoundations.reduce((sum, foundation) => sum + Number(foundation.progress || 0), 0) / teamFoundations.length
-      : 0;
+    const progress = teamFoundations.length ? teamFoundations.reduce((sum, foundation) => sum + Number(foundation.progress || 0), 0) / teamFoundations.length : 0;
     const todayReport = (reports || []).find((report) => report.leader_id === leader.id);
-    return {
-      ...leader,
-      zones: zones.filter((zone) => zone.owner_id === leader.id),
-      workers: Number(todayReport?.workers || 0),
-      technicalStaff: Number(todayReport?.technical_staff || 0),
-      reported: Boolean(todayReport),
-      foundationCount: teamFoundations.length,
-      progress
-    };
+    return { ...leader, zones: zones.filter((zone) => zone.owner_id === leader.id), workers: Number(todayReport?.workers || 0), technicalStaff: Number(todayReport?.technical_staff || 0), reported: Boolean(todayReport), foundationCount: teamFoundations.length, progress };
   });
 }
