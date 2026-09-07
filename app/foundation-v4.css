@@ -39,6 +39,15 @@
 .foundation-modal .field input,.foundation-modal .field select,.foundation-modal .field textarea{background:#fff;color:#203242;border:1px solid #cbd8e2;border-radius:10px}
 .foundation-modal .button{margin-top:18px;width:100%}
 
+.foundation-update-list{display:grid;gap:10px;margin-bottom:10px}
+.foundation-update-row{display:grid;grid-template-columns:140px minmax(220px,1fr) 110px 42px;gap:9px;align-items:center;padding:11px;border:1px solid #d8e3ea;border-radius:11px;background:#fbfcfd}
+.foundation-update-row select,.foundation-update-row input{min-height:42px;border:1px solid #ccd8e1;border-radius:9px;background:#fff;color:#203242;padding:0 10px;min-width:0}
+.foundation-update-row small{grid-column:1/-1;color:#687d8d;font-size:12px;padding-left:2px}
+.foundation-percent-input{position:relative}
+.foundation-percent-input input{width:100%;padding-right:28px}
+.foundation-percent-input span{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#61798a;font-size:13px;font-weight:700}
+.empty-inline{padding:14px 16px;border:1px dashed #ccd9e2;border-radius:10px;background:#f8fafb;color:#607587;font-size:14px;line-height:1.5}
+
 @media(max-width:980px){
   .site-map-v2{grid-template-columns:1fr!important}
   .site-map-v2>.map-column,.site-map-v2>.x1-grid,.site-map-v2>.aux-grid{grid-column:auto!important;grid-template-columns:1fr!important}
@@ -48,6 +57,7 @@
   .foundation-filter label{grid-column:1/-1;min-width:0}
   .foundation-filter select{width:100%;min-width:0}
   .foundation-toolbar>.button{width:100%}
+  .foundation-update-row{grid-template-columns:130px 1fr 100px 42px}
 }
 
 @media(max-width:720px){
@@ -66,4 +76,10 @@
   .foundation-table{min-width:860px}
   .foundation-modal{padding:21px 16px;border-radius:14px}
   .foundation-modal h2{font-size:21px}
+  .foundation-update-row{grid-template-columns:1fr 78px 40px;gap:8px}
+  .foundation-update-row>select{grid-column:1/-1}
+  .foundation-update-row>input{grid-column:1/2}
+  .foundation-update-row .foundation-percent-input{grid-column:2/3}
+  .foundation-update-row>.icon-button{grid-column:3/4}
+  .foundation-update-row small{grid-column:1/-1}
 }
