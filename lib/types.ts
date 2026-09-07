@@ -36,6 +36,8 @@ export type ReportRow = {
   workers: number;
   technical_staff: number;
   issue_text: string | null;
+  raw_message: string | null;
+  submitted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -53,6 +55,37 @@ export type WorkItemRow = {
   created_at: string;
 };
 
+export type LaborEntryRow = {
+  id: string;
+  report_id: string;
+  category_code: string;
+  label: string;
+  crew_name: string | null;
+  headcount: number;
+  counts_as_worker: boolean;
+  sort_order: number;
+};
+
+export type EquipmentEntryRow = {
+  id: string;
+  report_id: string;
+  equipment_name: string;
+  quantity: number;
+  unit: string;
+  note: string | null;
+  sort_order: number;
+};
+
+export type ReportTaskRow = {
+  id: string;
+  report_id: string;
+  kind: "main" | "other";
+  area_label: string | null;
+  description_vi: string;
+  description_zh: string | null;
+  sort_order: number;
+};
+
 export type Milestone = {
   id: number;
   label: string;
@@ -67,5 +100,7 @@ export type PhotoRow = {
   report_id: string;
   storage_path: string;
   caption: string | null;
+  area_label: string | null;
+  photo_type: string;
   created_at: string;
 };
