@@ -7,31 +7,85 @@ import {
   STORAGE_BUCKET
 } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const EXPECTED_USERS = ["tung", "duc", "toan", "toan-tran", "tuan", "quang", "tho"];
+
+async function tableExists(table: string) {
+  const db = getSupabaseAdmin();
+  const { error } = await db.from(table).select("*", { head: true, count: "exact" }).limit(1);
+  return { ok: !error, error: error?.message || null };
+}
+
 export async function GET() {
   let resolvedSupabaseOrigin: string | null = null;
-  let sessionSecretSource: ReturnType<typeof getSessionSecretSource> = "missing";
+  const sessionSecretSource = getSessionSecretSource();
 
   try {
     const { url } = getSupabaseConfig();
     resolvedSupabaseOrigin = url;
-    sessionSecretSource = getSessionSecretSource();
-
     const db = getSupabaseAdmin();
-    const { count, error: dbError } = await db
+
+    const { data: users, error: usersError } = await db
       .from("app_users")
-      .select("id", { head: true, count: "exact" });
+      .select("username,role,active")
+      .eq("active", true)
+      .order("username");
+    if (usersError) throw usersError;
 
-    if (dbError) throw dbError;
+    const usernames = (users || []).map((item) => String(item.username));
+    const missingUsers = EXPECTED_USERS.filter((username) => !usernames.includes(username));
 
-    await ensureStorageBucket();
+    const { error: authRpcError } = await db.rpc("authenticate_user", {
+      p_username: "__tailg_health_check__",
+      p_pin: "__not_a_real_pin__"
+    });
+
+    const [dailyReports, labor, equipment, tasks, weeklyAssets] = await Promise.all([
+      tableExists("daily_reports"),
+      tableExists("report_labor_entries"),
+      tableExists("report_equipment_entries"),
+      tableExists("report_tasks"),
+      tableExists("weekly_report_assets")
+    ]);
+
+    let storage = "connected";
+    let storageError: string | null = null;
+    try {
+      await ensureStorageBucket();
+    } catch (error) {
+      storage = "error";
+      storageError = error instanceof Error ? error.message : "Storage error";
+    }
+
     const sessionReady = sessionSecretSource !== "missing";
+    const authRpcReady = !authRpcError;
+    const baseSchemaReady = dailyReports.ok;
+    const v3SchemaReady = labor.ok && equipment.ok && tasks.ok && weeklyAssets.ok;
+    const usersReady = missingUsers.length === 0;
+    const storageReady = storage === "connected";
+    const ok = sessionReady && authRpcReady && baseSchemaReady && usersReady && storageReady;
 
     return NextResponse.json(
       {
-        ok: sessionReady,
+        ok,
         database: "connected",
-        users: count ?? 0,
-        storage: "connected",
+        users: usernames.length,
+        expectedUsers: EXPECTED_USERS.length,
+        missingUsers,
+        authRpc: authRpcReady ? "connected" : "missing-or-broken",
+        authRpcError: authRpcError?.message || null,
+        storage,
+        storageError,
+        schema: {
+          dailyReports: dailyReports.ok,
+          labor: labor.ok,
+          equipment: equipment.ok,
+          tasks: tasks.ok,
+          weeklyAssets: weeklyAssets.ok,
+          v3Ready: v3SchemaReady
+        },
         config: {
           supabaseUrl: true,
           supabaseSecret: true,
@@ -41,7 +95,7 @@ export async function GET() {
           storageBucket: STORAGE_BUCKET
         }
       },
-      { status: sessionReady ? 200 : 500 }
+      { status: ok ? 200 : 503 }
     );
   } catch (error) {
     return NextResponse.json(
