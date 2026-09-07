@@ -4,6 +4,8 @@ import { readSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { getReportRange } from "@/lib/data";
 import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+
 const C = {
   bg: "EDF5FB",
   red: "E31B23",
@@ -119,14 +121,13 @@ export async function GET(request: NextRequest) {
     const tableRows = rows.map((row) => row.map((value) => ({ text: String(value) })));
     slide.addTable(tableRows, {
       x: 0.65, y: 1.2, w: 12.05, h: 4.8,
-      border: { color: "B8CDD9", width: 0.8 },
-      fill: C.white,
+      border: { color: "B8CDD9", pt: 0.8 },
+      fill: { color: C.white },
       color: C.text,
       fontSize: 10,
       margin: 0.08,
       rowH: 0.55,
       bold: false,
-      autoFit: false,
       colW: [2.15, 1.05, 0.95, 0.95, 0.85, 6.1]
     });
     slide.addText(`Ngày chốt gần nhất: ${latestDate ? formatDate(latestDate) : "Chưa có dữ liệu"}`, { x: 0.75, y: 6.25, w: 4.2, h: 0.25, fontSize: 9, color: C.muted });
