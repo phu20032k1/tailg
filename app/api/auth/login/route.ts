@@ -34,11 +34,7 @@ export async function POST(request: Request) {
     if (error) {
       console.error("login user lookup:", error.message);
       return NextResponse.json(
-        {
-          ok: false,
-          code: "ACCOUNT_TABLE_ERROR",
-          error: "Không đọc được bảng app_users trên Supabase. Mở /api/health để xem lỗi cấu hình."
-        },
+        { ok: false, code: "ACCOUNT_TABLE_ERROR", error: "Hệ thống đăng nhập đang bận. Vui lòng thử lại sau." },
         { status: 503 }
       );
     }
@@ -47,8 +43,6 @@ export async function POST(request: Request) {
     let validPin = false;
     let rpcAvailable = true;
 
-    // pgcrypto Blowfish hashes produced by seed.sql are bcrypt-compatible, so
-    // verify locally first to avoid an unnecessary database round-trip.
     if (row?.pin_hash) {
       try {
         validPin = await bcrypt.compare(body.pin, row.pin_hash);
@@ -57,8 +51,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Keep compatibility with existing Supabase projects that authenticate via
-    // the security-definer RPC. This also verifies older pgcrypto hash variants.
     if (!validPin) {
       const { data: rpcRows, error: rpcError } = await db.rpc("authenticate_user", {
         p_username: username,
@@ -82,11 +74,7 @@ export async function POST(request: Request) {
 
     if (!row) {
       return NextResponse.json(
-        {
-          ok: false,
-          code: "ACCOUNT_NOT_SEEDED",
-          error: "Tài khoản chưa có trong Supabase. Cần chạy lại schema.sql → seed.sql → functions.sql."
-        },
+        { ok: false, code: "ACCOUNT_NOT_SEEDED", error: "Tài khoản chưa được kích hoạt. Vui lòng liên hệ người quản lý." },
         { status: 503 }
       );
     }
@@ -96,9 +84,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           code: rpcAvailable ? "INVALID_PIN" : "INVALID_PIN_OR_AUTH_RPC_MISSING",
-          error: rpcAvailable
-            ? "Mã PIN không đúng với dữ liệu đang lưu trong Supabase."
-            : "PIN chưa xác thực được và hàm authenticate_user chưa sẵn sàng. Kiểm tra /api/health."
+          error: rpcAvailable ? "Mã PIN không đúng. Vui lòng kiểm tra lại." : "Chưa thể xác thực tài khoản lúc này. Vui lòng thử lại."
         },
         { status: 401 }
       );
@@ -126,30 +112,8 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Unknown login error";
     console.error("login route:", message);
 
-    if (message.includes("Missing SUPABASE_URL") || message.includes("SUPABASE_SECRET_KEY")) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "SUPABASE_ENV_MISSING",
-          error: "Vercel đang thiếu SUPABASE_URL hoặc Supabase Secret/Service Role key."
-        },
-        { status: 500 }
-      );
-    }
-
-    if (message.includes("session signing secret") || message.includes("SESSION_SECRET")) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "SESSION_SECRET_MISSING",
-          error: "Vercel đang thiếu khóa ký phiên đăng nhập phía server."
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
-      { ok: false, code: "LOGIN_INTERNAL_ERROR", error: "Lỗi hệ thống khi đăng nhập." },
+      { ok: false, code: "LOGIN_INTERNAL_ERROR", error: "Không đăng nhập được lúc này. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }
