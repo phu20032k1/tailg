@@ -1,7 +1,7 @@
 import { ClipboardPlus } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getFormMeta } from "@/lib/data";
-import { ReportForm } from "@/components/report-form";
+import { DailyReportForm } from "@/components/daily-report-form";
 
 export default async function NewReportPage() {
   const user = await requireUser();
@@ -10,10 +10,14 @@ export default async function NewReportPage() {
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">NHẬT KÝ THI CÔNG</span><h1>Nhập báo cáo hằng ngày</h1><p>Giai đoạn 1 chỉ tập trung nhân lực + công việc móng + tên móng + % + ảnh.</p></div>
+        <div>
+          <span className="eyebrow">BÁO CÁO TRƯỚC 07:30</span>
+          <h1>Báo cáo thi công hằng ngày</h1>
+          <p>Dán tin nhắn nhóm dự án → rà lại nhân lực, máy móc, công việc → tải ảnh đại diện → lưu một lần.</p>
+        </div>
         <div className="page-title-icon"><ClipboardPlus size={25} /></div>
       </section>
-      <div className="panel"><div className="panel-body"><ReportForm user={user} zones={meta.zones} leaders={meta.leaders} /></div></div>
+      <div className="panel"><div className="panel-body"><DailyReportForm user={user} leaders={meta.leaders} /></div></div>
     </>
   );
 }
