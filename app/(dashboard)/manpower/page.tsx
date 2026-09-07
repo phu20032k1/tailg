@@ -51,17 +51,17 @@ export default async function ManpowerPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">KIỂM SOÁT NHÂN CÔNG</span><h1>Bảng tổng hợp nhân lực</h1><p>Mẫu cột đứng thay cho việc 2 ngày/lần cộng Excel thủ công.</p></div>
+        <div><span className="eyebrow">NHÂN LỰC CÔNG TRƯỜNG</span><h1>Bảng tổng hợp nhân lực</h1><p>Theo dõi số lượng nhân lực của từng đội theo ngày và xuất bảng tổng hợp khi cần.</p></div>
         <div className="page-title-icon"><UsersRound size={25} /></div>
       </section>
 
-      <section className="panel">
+      <section className="panel lazy-section">
         <div className="panel-body">
           <form className="range-filter" method="get">
             <label>Từ ngày<input type="date" name="from" defaultValue={from} /></label>
             <label>Đến ngày<input type="date" name="to" defaultValue={to} /></label>
             <button className="button secondary" type="submit">Xem dữ liệu</button>
-            <Link className="button primary" href={`/api/manpower/xlsx?from=${from}&to=${to}`}><Download size={17} /> Xuất Excel</Link>
+            <Link className="button primary" href={`/api/manpower/xlsx?from=${from}&to=${to}`}><Download size={17} /> Tải bảng Excel</Link>
           </form>
 
           <div className="matrix-scroll">
