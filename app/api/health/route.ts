@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSessionSecretSource } from "@/lib/auth";
-import { getSupabaseAdmin, getSupabaseConfig, STORAGE_BUCKET } from "@/lib/supabase/admin";
+import {
+  ensureStorageBucket,
+  getSupabaseAdmin,
+  getSupabaseConfig,
+  STORAGE_BUCKET
+} from "@/lib/supabase/admin";
 
 export async function GET() {
   let resolvedSupabaseOrigin: string | null = null;
@@ -18,18 +23,15 @@ export async function GET() {
 
     if (dbError) throw dbError;
 
-    const { data: buckets, error: storageError } = await db.storage.listBuckets();
-    if (storageError) throw storageError;
-
-    const storageConnected = buckets.some((bucket) => bucket.id === STORAGE_BUCKET);
+    await ensureStorageBucket();
     const sessionReady = sessionSecretSource !== "missing";
 
     return NextResponse.json(
       {
-        ok: sessionReady && storageConnected,
+        ok: sessionReady,
         database: "connected",
         users: count ?? 0,
-        storage: storageConnected ? "connected" : `bucket ${STORAGE_BUCKET} missing`,
+        storage: "connected",
         config: {
           supabaseUrl: true,
           supabaseSecret: true,
@@ -39,7 +41,7 @@ export async function GET() {
           storageBucket: STORAGE_BUCKET
         }
       },
-      { status: sessionReady && storageConnected ? 200 : 500 }
+      { status: sessionReady ? 200 : 500 }
     );
   } catch (error) {
     return NextResponse.json(
