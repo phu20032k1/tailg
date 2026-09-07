@@ -1,37 +1,92 @@
-# TAILG Site Control V2
+# TAILG Site Control V3
 
-Pilot điều hành thi công cho dự án TAILG, đã chuyển từ Vanilla/localStorage sang kiến trúc production-friendly:
+Nền tảng điều hành thi công Pilot cho dự án TAILG, tập trung vào luồng dữ liệu thật của công trường:
+
+**6 Đội trưởng báo cáo trước 07:30 → hệ thống lưu tập trung → Ban điều hành xem Dashboard/Excel → tổng hợp báo cáo tuần PowerPoint cho Chủ đầu tư.**
+
+## Stack
 
 - **Frontend:** Next.js App Router + React + TypeScript
 - **Backend:** Next.js Route Handlers trên Node.js/Vercel
 - **Database:** PostgreSQL trên Supabase
-- **Ảnh hiện trường:** private Supabase Storage
+- **Ảnh + PDF:** private Supabase Storage
 - **Auth:** username/PIN băm bằng PostgreSQL `pgcrypto` + session JWT HttpOnly
+- **Excel:** ExcelJS
+- **PowerPoint:** PptxGenJS
 - **Deploy:** Vercel
 
-## Phạm vi Giai đoạn 1
+## V3 làm được gì?
 
-Chỉ làm đúng luồng:
+### Báo cáo hằng ngày
 
-**6 Đội trưởng nhập hằng ngày → PostgreSQL lưu tập trung → Phan Viết Tùng xem Dashboard.**
+Mỗi đội có thể dán nguyên tin nhắn báo cáo cơ học từ nhóm dự án. Trình duyệt bóc tách theo quy tắc, không dùng AI, thành:
 
-Dữ liệu nhập gồm ngày, nhân công, cán bộ kỹ thuật, khu vực, công việc móng, tên/mã móng, khối lượng, phần trăm tiến độ, vướng mắc, ghi chú và ảnh hiện trường.
+- ngày + đội;
+- kỹ thuật, lái máy, bảo vệ, TD;
+- công nhật, cốt thép, cốp pha/ván khuôn;
+- máy móc/xe;
+- công việc chính;
+- công việc khác;
+- ảnh hiện trường;
+- tin nhắn gốc để đối chiếu.
 
-Chưa đưa AI, chatbot, ERP, BIM, kế toán, vật tư/máy móc đầy đủ vào V2 này.
+Người nhập rà lại trước khi bấm lưu.
 
-## 7 tài khoản
+### Tổng hợp nhân lực
 
-| Tài khoản | Vai trò | Phạm vi |
+Trang `/manpower` tạo bảng cột đứng theo ngày cho 6 đội và toàn dự án. Có nút **Xuất Excel**.
+
+Quy ước `workers` hiện dùng đúng cách bảng theo dõi thực tế đang cộng:
+
+**Công nhật + Cốt thép + Cốp pha/ván khuôn**.
+
+Kỹ thuật, lái máy, bảo vệ, TD vẫn được lưu riêng để Ban điều hành kiểm soát nhưng không cộng vào `workers`.
+
+### Báo cáo tuần PowerPoint
+
+Trang `/weekly-report` lấy dữ liệu trong khoảng ngày đã chọn:
+
+- nhân lực/máy móc;
+- công việc chính;
+- công việc khác;
+- ảnh thi công;
+- mặt bằng tiến độ;
+- bản nháp kế hoạch tuần tới.
+
+Có nút **Xuất PowerPoint**. File PPTX dùng cấu trúc báo cáo TAILG/LICOGI18.3: cập nhật hiện trường → kế hoạch tuần tới → an toàn → các vấn đề khác, với tiêu đề cố định Việt/Trung.
+
+Mặt bằng thi công được quản lý đúng quy trình hiện tại: upload **PDF nguồn + ảnh crop**; ảnh crop được chèn vào PowerPoint, PDF nguồn được giữ trong Storage để truy vết.
+
+## 7 tài khoản Pilot
+
+| Username | Họ tên | Vai trò / phạm vi |
 |---|---|---|
-| Phan Viết Tùng | Chỉ huy trưởng | Dashboard tổng hợp |
-| Bùi Văn Đức | Đội trưởng | 1/4 Xưởng 1 + Xưởng 2 |
-| Tăng Văn Toán | Đội trưởng | 1/4 Xưởng 1 |
-| Trần Văn Toãn | Đội trưởng | 1/4 Xưởng 1 |
-| Nguyễn Văn Tuần | Đội trưởng | 1/4 Xưởng 1 |
-| Nguyễn Ánh Quang | Đội trưởng | 1/2 Xưởng 3 + Nhà ăn + Nhà xe + Bể ngầm + Bể XLNT |
-| Nguyễn Duy Thọ | Đội trưởng | 1/2 Xưởng 3 + Hạ tầng |
+| `tung` | Phan Viết Tùng | Chỉ huy trưởng · xem toàn bộ |
+| `duc` | Bùi Văn Đức | 1/4 Xưởng 1 + Xưởng 2 |
+| `toan` | Tăng Văn Toán | 1/4 Xưởng 1 |
+| `toan-tran` | Trần Văn Toãn | 1/4 Xưởng 1 |
+| `tuan` | Nguyễn Văn Tuần | 1/4 Xưởng 1 |
+| `quang` | Nguyễn Ánh Quang | 1/2 Xưởng 3 + Nhà ăn + Nhà xe + Bể ngầm + Bể XLNT |
+| `tho` | Nguyễn Duy Thọ | 1/2 Xưởng 3 + Hạ tầng |
 
-PIN được bạn tự đặt trong `supabase/seed.sql` trước khi chạy seed; PIN không được commit vào repository.
+## Cài database mới
+
+Nếu project Supabase đã chạy V2 (`schema.sql`, `seed.sql`, `functions.sql`), chạy tiếp trong **SQL Editor**, đúng thứ tự:
+
+```text
+1. supabase/migrations/20260907_daily_reporting_v3.sql
+2. supabase/migrations/20260907_weekly_report_assets.sql
+3. supabase/seed_real_2026_09_07.sql
+```
+
+File số 3 đưa bộ dữ liệu báo cáo thật ngày **07/09/2026** của đủ 6 đội vào PostgreSQL. Kết quả kiểm tra cuối seed phải là:
+
+```text
+report_date      2026-09-07
+direct_workers   320
+technical_staff  30
+teams_reported   6
+```
 
 ## Source chính
 
@@ -39,84 +94,38 @@ PIN được bạn tự đặt trong `supabase/seed.sql` trước khi chạy see
 tailg/
 ├── app/
 │   ├── (dashboard)/
-│   │   ├── foundations/page.tsx
-│   │   ├── map/page.tsx
 │   │   ├── reports/new/page.tsx
 │   │   ├── reports/page.tsx
+│   │   ├── manpower/page.tsx
+│   │   ├── weekly-report/page.tsx
+│   │   ├── foundations/page.tsx
+│   │   ├── map/page.tsx
 │   │   ├── teams/page.tsx
-│   │   ├── layout.tsx
 │   │   └── page.tsx
 │   ├── api/
-│   │   ├── auth/login/route.ts
-│   │   ├── auth/logout/route.ts
-│   │   ├── health/route.ts
 │   │   ├── reports/route.ts
-│   │   └── reports/[id]/photos/route.ts
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── login/page.tsx
+│   │   ├── reports/[id]/photos/route.ts
+│   │   ├── manpower/xlsx/route.ts
+│   │   ├── weekly-report/assets/route.ts
+│   │   └── weekly-report/pptx/route.ts
+│   └── ...
 ├── components/
-├── docs/SETUP_SUPABASE.md
+│   ├── daily-report-form.tsx
+│   ├── weekly-asset-form.tsx
+│   └── ...
 ├── lib/
+│   ├── report-message-parser.ts
+│   ├── data.ts
+│   └── ...
 ├── supabase/
-│   ├── schema.sql
-│   ├── seed.sql
-│   └── functions.sql
-├── .env.example
-├── next.config.ts
-├── package.json
-└── tsconfig.json
+│   ├── migrations/
+│   └── seed_real_2026_09_07.sql
+└── docs/DAILY_WEEKLY_REPORT_V3.md
 ```
 
-## Backend
+## Biến môi trường Vercel
 
-```text
-Điện thoại Đội trưởng
-        │
-        ▼
-Next.js UI
-        │
-        ├── POST /api/reports
-        │       ▼
-        │   create_work_entry()
-        │       ├── kiểm tra đúng khu vực
-        │       ├── chặn trùng chủ quản móng
-        │       ├── cập nhật nhân lực
-        │       ├── lưu công việc
-        │       └── cập nhật trạng thái móng
-        │
-        └── POST /api/reports/:id/photos
-                ▼
-          Supabase Storage
-
-PostgreSQL ─────────────→ Dashboard Phan Viết Tùng
-Storage ảnh ────────────→ signed URL → Dashboard
-```
-
-## Lấy API Supabase + cài đặt
-
-Đọc file **[`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md)**. Trong đó có từng bước:
-
-1. tạo Supabase project;
-2. lấy Project URL;
-3. lấy server Secret API key dạng `sb_secret_...`;
-4. chạy 3 file SQL;
-5. tạo `SESSION_SECRET`;
-6. cấu hình `.env.local`;
-7. chạy local;
-8. thêm Environment Variables trên Vercel;
-9. kiểm tra `/api/health`;
-10. test 7 tài khoản.
-
-Tóm tắt chạy local:
-
-```bash
-cp .env.example .env.local
-npm install
-npm run dev
-```
-
-## Biến môi trường
+Không có biến mới so với V2:
 
 ```env
 SUPABASE_URL=
@@ -125,37 +134,40 @@ SESSION_SECRET=
 SUPABASE_STORAGE_BUCKET=site-photos
 ```
 
-Không commit `.env.local`.
+Không commit `.env.local`. `SUPABASE_SECRET_KEY` chỉ dùng server-side.
 
-**`SUPABASE_SECRET_KEY` tuyệt đối không được đưa vào biến `NEXT_PUBLIC_*` hoặc gửi cho người dùng cuối.** App vẫn có fallback cho legacy `SUPABASE_SERVICE_ROLE_KEY` nếu project cũ chưa chuyển key mới.
+## Ảnh và PDF lưu ở đâu?
 
-## Ảnh lưu ở đâu?
-
-Ảnh thật **không lưu trong GitHub, localStorage hoặc PostgreSQL**.
-
-Ảnh được lưu trong private Supabase Storage bucket `site-photos`. PostgreSQL chỉ giữ `storage_path` + metadata. Dashboard tạo signed URL có thời hạn khi hiển thị.
-
-## Dữ liệu Pilot cũ
-
-Dữ liệu localStorage/Redis của V1 không tự động migrate vào PostgreSQL V2. Nếu cần giữ dữ liệu cũ, export trước rồi viết bước import riêng.
-
-## Test trước khi deploy
-
-```bash
-npm run build
-npm run lint
-```
-
-Sau deploy mở:
+Ảnh/PDF thật **không lưu trong GitHub hoặc PostgreSQL**.
 
 ```text
-/api/health
+Supabase Storage / site-photos
+├── <leader_id>/<YYYY-MM-DD>/work/...     # ảnh báo cáo ngày
+└── weekly/<from>-<to>/...                # PDF + ảnh crop báo cáo tuần
 ```
 
-Sau đó test:
+PostgreSQL chỉ lưu `storage_path` và metadata. Khi xem trên web, backend tạo signed URL.
 
-1. Đức nhập M-01.
-2. Toán thử nhập M-01 → phải bị chặn.
-3. Đức tải ảnh hiện trường.
-4. Tùng xem được nhân công, móng, nhật ký và ảnh.
-5. Mở trên điện thoại khác → vẫn cùng nguồn PostgreSQL + Storage.
+## Chạy local
+
+```bash
+cp .env.example .env.local
+npm install
+npm run lint
+npm run build
+npm run dev
+```
+
+Mở `http://localhost:3000` và kiểm tra `/api/health`.
+
+## Deploy Vercel
+
+1. Chạy đủ migration V3 trên Supabase trước.
+2. Push/merge source lên `main`.
+3. Vercel tự nhận Next.js và cài dependency mới.
+4. Redeploy.
+5. Kiểm tra `/api/health`.
+6. Login `tung`, kiểm tra `/manpower` và `/weekly-report`.
+7. Login từng đội, thử dán tin nhắn báo cáo và upload ảnh.
+
+Chi tiết thêm: [`docs/DAILY_WEEKLY_REPORT_V3.md`](docs/DAILY_WEEKLY_REPORT_V3.md).
