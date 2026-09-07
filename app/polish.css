@@ -1,14 +1,23 @@
 /* Hoàn thiện giao diện vận hành: chữ thống nhất, thao tác rõ, không lộ nội dung kỹ thuật nội bộ. */
 body,body *{
-  font-family:Arial,"Segoe UI",Tahoma,sans-serif !important;
+  font-family:"Segoe UI",Arial,Tahoma,sans-serif !important;
 }
+html{scroll-behavior:smooth}
 body{
   font-size:16px;
   color:#203242;
+  font-kerning:normal;
+  font-feature-settings:"kern" 1;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
 }
 button,input,select,textarea,table,th,td{
   font-size:15px;
+  -webkit-font-smoothing:antialiased;
 }
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Loại bỏ các dòng hướng dẫn kỹ thuật khỏi màn hình nghiệp vụ. */
 .form-help,
@@ -40,30 +49,7 @@ button,input,select,textarea,table,th,td{
 .text-link{font-size:14px}
 .report-task span,.compact-list>span,.weekly-task-list span{font-size:15px}
 
-/* Sidebar luôn cuộn được; khu đăng xuất không bị mất khỏi tầm nhìn. */
-.sidebar{
-  overflow-y:auto;
-  overscroll-behavior:contain;
-}
-.sidebar-bottom{
-  position:sticky;
-  bottom:0;
-  background:#fff;
-  padding:14px 7px 6px;
-  border-top:1px solid #dce4eb;
-  z-index:3;
-}
-.logout-button{
-  min-height:46px;
-  font-size:15px;
-  font-weight:700;
-  color:#9f2f35;
-  background:#fff7f7;
-  border:1px solid #e8c7c9;
-}
-.logout-button:hover{background:#fceeee;color:#84242a}
-
-/* Đăng xuất luôn có thêm ở thanh trên cùng. */
+/* Chỉ giữ một nút đăng xuất ở thanh trên cùng. */
 .header-user-block{min-width:0}
 .header-actions{flex-shrink:0}
 .header-logout-form{margin:0}
@@ -85,7 +71,7 @@ button,input,select,textarea,table,th,td{
 }
 .header-logout-button:hover{background:#fbedee;border-color:#d9b5b8}
 
-/* Thông báo thao tác: rõ ràng, tự biến mất sau vài giây. */
+/* Thông báo thao tác. */
 .operation-popup{
   position:fixed;
   top:98px;
@@ -155,6 +141,7 @@ button,input,select,textarea,table,th,td{
   width:100%;
   height:180px;
   object-fit:cover;
+  background:#eef2f5;
 }
 .photo-zoom-hint{
   position:absolute;
@@ -230,31 +217,209 @@ button,input,select,textarea,table,th,td{
 
 /* Tránh font cũ ở nội dung tin nhắn và bảng. */
 .raw-message pre,code,pre{
-  font-family:Arial,"Segoe UI",Tahoma,sans-serif !important;
+  font-family:"Segoe UI",Arial,Tahoma,sans-serif !important;
+}
+
+/* Giảm phần chưa cần vẽ ngay để trang dài tải nhẹ hơn. */
+.lazy-section{
+  content-visibility:auto;
+  contain-intrinsic-size:auto 520px;
+}
+
+/* Quản lý báo cáo. */
+.report-card-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.report-actions{display:flex;align-items:center;gap:7px}
+.report-action-button{
+  min-height:38px;
+  padding:0 11px;
+  border:1px solid #cfdae2;
+  border-radius:8px;
+  background:#fff;
+  color:#36546a;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.report-action-button:hover{background:#f3f7fa}
+.report-action-button.danger{color:#a53b40;border-color:#e4c6c8;background:#fff9f9}
+.report-action-button.danger:hover{background:#fff0f0}
+
+.confirm-layer{
+  position:fixed;
+  inset:0;
+  z-index:1300;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(20,31,41,.52);
+}
+.confirm-card{
+  width:min(430px,100%);
+  background:#fff;
+  border-radius:14px;
+  padding:26px;
+  box-shadow:0 24px 70px rgba(14,31,45,.25);
+  text-align:center;
+}
+.confirm-icon{
+  width:50px;
+  height:50px;
+  margin:0 auto 12px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#fff0f0;
+  color:#ad3c42;
+}
+.confirm-card h3{font-size:21px;margin:0 0 8px;color:#243b4d}
+.confirm-card p{font-size:14px;line-height:1.55;color:#667887;margin:0}
+.confirm-actions{display:flex;gap:10px;justify-content:center;margin-top:22px}
+.danger-button{background:#b83e44;color:#fff;border:0}
+.danger-button:hover{background:#9f3439}
+
+/* Bộ lọc lịch sử. */
+.history-filter-panel{margin-bottom:0}
+.history-calendar-filter{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.calendar-filter-title{display:flex;align-items:center;gap:8px;color:#26465d;min-height:46px;margin-right:4px}
+.history-calendar-filter label{display:grid;gap:6px;color:#4a6273;font-size:13px;font-weight:700}
+.history-calendar-filter input{min-height:44px;border:1px solid #ccd8e1;border-radius:8px;padding:8px 10px;background:#fff;color:#24394a}
+
+/* Trang chỉnh sửa báo cáo. */
+.edit-summary{
+  min-height:74px;
+  display:grid;
+  grid-template-columns:auto 1fr auto 1fr;
+  align-items:center;
+  gap:8px 12px;
+  padding:12px 14px;
+  border:1px solid #d8e3ea;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.edit-summary span{font-size:13px;color:#64798a}
+.edit-summary strong{font-size:22px;color:#1d4764}
+.edit-form-actions{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:12px;padding:12px;background:rgba(255,255,255,.94);border:1px solid #dce5eb;border-radius:11px;box-shadow:0 10px 28px rgba(35,55,75,.1);z-index:5}
+
+/* Thanh điều hướng điện thoại. */
+.sidebar-mobile-head{display:none}
+.mobile-menu-button{
+  width:42px;
+  height:42px;
+  border:1px solid #d3dde5;
+  border-radius:9px;
+  background:#fff;
+  color:#24455d;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+.sidebar-mobile-brand{display:flex;align-items:center;gap:10px}
+.sidebar-mobile-brand>div{display:flex;flex-direction:column;line-height:1.2}
+.sidebar-mobile-brand strong{font-size:16px;color:#17384f}
+.sidebar-mobile-brand span{font-size:11px;color:#6f8291}
+
+@media(max-width:1100px){
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-grid{grid-template-columns:1fr}
 }
 
 @media(max-width:980px){
+  .app-shell{display:block;min-height:100vh}
   .sidebar{
-    max-height:none;
+    position:sticky;
+    top:0;
     height:auto;
+    max-height:none;
     overflow:visible;
+    padding:0;
+    border-right:0;
+    border-bottom:1px solid #d9e2e9;
+    background:#fff;
+    z-index:40;
+    box-shadow:0 3px 14px rgba(28,49,66,.08);
   }
-  .sidebar-bottom{
-    position:relative;
-    bottom:auto;
+  .sidebar-desktop-content{display:none}
+  .sidebar-mobile-head{
+    height:60px;
+    padding:0 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
   }
+  .sidebar-nav{display:none;padding:8px 12px 14px;background:#fff;border-top:1px solid #e4eaef;max-height:calc(100vh - 62px);overflow-y:auto}
+  .sidebar.mobile-open .sidebar-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .nav-link{min-height:48px;padding:0 11px;background:#f8fafc;border:1px solid #e4eaef}
+  .nav-link.active{background:#eaf3fb}
+  .main-shell{min-width:0}
+  .app-header{top:60px;height:66px;padding:0 14px}
+  .page-shell{padding:20px 14px 72px}
+  .page-title-row{align-items:flex-start}
+  .page-title-icon{width:46px;height:46px;flex:0 0 auto}
+  .hero-banner{align-items:flex-start;flex-direction:column}
+  .hero-banner .button{width:100%}
+  .report-card-head{align-items:flex-start;gap:12px}
+  .report-card-tools{width:100%;justify-content:space-between}
+  .report-detail-grid,.report-task-groups{grid-template-columns:1fr}
+  .activity-row{grid-template-columns:1fr;gap:9px}
+  .activity-meta{align-items:flex-start;text-align:left;flex-direction:row;gap:8px}
+  .history-calendar-filter{display:grid;grid-template-columns:1fr 1fr}
+  .calendar-filter-title{grid-column:1/-1}
+  .history-calendar-filter label,.history-calendar-filter input,.history-calendar-filter .button{width:100%}
+  .edit-form-actions{bottom:8px}
 }
 
 @media(max-width:720px){
   body{font-size:15px}
-  .app-header{padding:0 12px;gap:10px}
-  .app-header h2{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
-  .header-actions{gap:7px}
-  .header-logout-button{min-height:39px;padding:0 10px;font-size:13px}
+  .sidebar.mobile-open .sidebar-nav{grid-template-columns:1fr}
+  .app-header{padding:0 11px;gap:8px}
+  .app-header h2{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:135px}
+  .app-header .eyebrow{font-size:11px}
+  .header-actions{gap:6px}
+  .header-logout-button{min-height:38px;padding:0 10px;font-size:13px}
+  .header-logout-button span{display:none}
+  .header-logout-button{width:40px}
   .user-avatar{display:none}
   .nav-link{font-size:14px}
-  .operation-popup{top:auto;right:16px;bottom:18px;left:16px;width:auto}
-  .photo-open-button img{height:220px}
-  .photo-lightbox{padding:16px}
-  .photo-lightbox-close{top:12px;right:12px}
+  .page-shell{padding:16px 11px 72px}
+  .page-title-row{gap:10px}
+  .page-title-row h1,.hero-banner h1{font-size:25px}
+  .page-title-row p,.hero-banner p{font-size:14px}
+  .page-title-icon{display:none}
+  .stats-grid{grid-template-columns:1fr;gap:10px}
+  .stat-card{min-height:132px}
+  .panel-head{padding:15px}
+  .panel-body{padding:15px}
+  .report-card-head{padding:15px}
+  .report-card-tools{display:grid;grid-template-columns:1fr;gap:9px}
+  .headcount-chip{width:100%;justify-content:flex-start}
+  .report-actions{width:100%}
+  .report-action-button{flex:1;min-height:42px}
+  .history-calendar-filter{grid-template-columns:1fr}
+  .calendar-filter-title{grid-column:auto}
+  .operation-popup{top:auto;right:12px;bottom:14px;left:12px;width:auto}
+  .photo-grid{grid-template-columns:1fr !important}
+  .photo-open-button img{height:230px}
+  .photo-lightbox{padding:12px}
+  .photo-lightbox-close{top:10px;right:10px}
+  .labor-table .editable-row,.equipment-table .editable-row,.task-editor-top{grid-template-columns:1fr !important}
+  .editable-row input[type=checkbox]{margin:5px 0;width:22px;min-height:22px}
+  .editable-row .icon-button,.task-editor-top .icon-button{width:100%;height:40px}
+  .editable-head{display:none}
+  .summary-strip{grid-template-columns:1fr}
+  .edit-summary{grid-template-columns:1fr 1fr}
+  .edit-form-actions{display:grid;grid-template-columns:1fr 1fr;padding:9px}
+  .confirm-actions{display:grid;grid-template-columns:1fr 1fr}
+  .weekly-kpis{grid-template-columns:1fr 1fr}
+  .asset-upload-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:430px){
+  .weekly-kpis{grid-template-columns:1fr}
+  .login-panel{padding:14px}
+  .login-card{padding:22px 17px}
+  .confirm-card{padding:22px 18px}
 }
