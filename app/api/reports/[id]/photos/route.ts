@@ -10,6 +10,7 @@ const ALLOWED_TYPES = new Set([
   "image/heic",
   "image/heif"
 ]);
+const PHOTO_TYPES = new Set(["work", "plan", "safety", "other"]);
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -31,7 +32,6 @@ export async function POST(
 
   const { id: reportId } = await context.params;
   const db = getSupabaseAdmin();
-
   const { data: report, error: reportError } = await db
     .from("daily_reports")
     .select("id,leader_id,report_date")
@@ -41,7 +41,6 @@ export async function POST(
   if (reportError || !report) {
     return NextResponse.json({ ok: false, error: "Không tìm thấy báo cáo." }, { status: 404 });
   }
-
   if (session.role === "leader" && report.leader_id !== session.id) {
     return NextResponse.json({ ok: false, error: "Bạn không có quyền tải ảnh cho báo cáo này." }, { status: 403 });
   }
@@ -49,23 +48,22 @@ export async function POST(
   const form = await request.formData();
   const file = form.get("file");
   const caption = String(form.get("caption") || "").trim().slice(0, 300);
+  const areaLabel = String(form.get("areaLabel") || "").trim().slice(0, 180);
+  const requestedType = String(form.get("photoType") || "work").trim().toLowerCase();
+  const photoType = PHOTO_TYPES.has(requestedType) ? requestedType : "work";
 
   if (!(file instanceof File)) {
     return NextResponse.json({ ok: false, error: "Chưa chọn ảnh." }, { status: 400 });
   }
   if (!ALLOWED_TYPES.has(file.type)) {
-    return NextResponse.json(
-      { ok: false, error: "Chỉ nhận JPG, PNG, WEBP, HEIC/HEIF." },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: "Chỉ nhận JPG, PNG, WEBP, HEIC/HEIF." }, { status: 400 });
   }
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ ok: false, error: "Ảnh tối đa 10 MB." }, { status: 400 });
   }
 
-  const path = `${report.leader_id}/${report.report_date}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const path = `${report.leader_id}/${report.report_date}/${photoType}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
   const bytes = await file.arrayBuffer();
-
   const { error: uploadError } = await db.storage.from(STORAGE_BUCKET).upload(path, bytes, {
     contentType: file.type,
     cacheControl: "3600",
@@ -83,9 +81,11 @@ export async function POST(
       report_id: report.id,
       storage_path: path,
       caption: caption || null,
+      area_label: areaLabel || null,
+      photo_type: photoType,
       created_by: session.id
     })
-    .select("id,storage_path,caption,created_at")
+    .select("id,storage_path,caption,area_label,photo_type,created_at")
     .single();
 
   if (insertError) {
@@ -95,9 +95,5 @@ export async function POST(
   }
 
   const { data: signed } = await db.storage.from(STORAGE_BUCKET).createSignedUrl(path, 1800);
-
-  return NextResponse.json(
-    { ok: true, photo: { ...photo, signedUrl: signed?.signedUrl || null } },
-    { status: 201 }
-  );
+  return NextResponse.json({ ok: true, photo: { ...photo, signedUrl: signed?.signedUrl || null } }, { status: 201 });
 }
