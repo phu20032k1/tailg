@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
@@ -7,12 +8,46 @@ import type { SessionUser } from "@/lib/types";
 export const SESSION_COOKIE = "tailg_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
-function secret() {
-  const value = process.env.SESSION_SECRET;
-  if (!value || value.length < 32) {
-    throw new Error("SESSION_SECRET must be at least 32 characters.");
+function clean(raw: string | undefined) {
+  let value = (raw || "").trim();
+  if (!value) return "";
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    value = value.slice(1, -1).trim();
   }
-  return new TextEncoder().encode(value);
+  return value;
+}
+
+export function getSessionSecretSource(): "SESSION_SECRET" | "SUPABASE_SECRET_KEY" | "missing" {
+  const explicit = clean(process.env.SESSION_SECRET);
+  if (explicit.length >= 32) return "SESSION_SECRET";
+
+  const supabaseSecret = clean(
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (supabaseSecret.length >= 32) return "SUPABASE_SECRET_KEY";
+
+  return "missing";
+}
+
+function secret() {
+  const explicit = clean(process.env.SESSION_SECRET);
+  if (explicit.length >= 32) {
+    return new TextEncoder().encode(explicit);
+  }
+
+  const supabaseSecret = clean(
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (supabaseSecret.length >= 32) {
+    const derived = createHash("sha256")
+      .update(`tailg-session-v1:${supabaseSecret}`)
+      .digest();
+    return new Uint8Array(derived);
+  }
+
+  throw new Error(
+    "Missing session signing secret. Set SESSION_SECRET or SUPABASE_SECRET_KEY."
+  );
 }
 
 export async function createSessionToken(user: SessionUser) {
