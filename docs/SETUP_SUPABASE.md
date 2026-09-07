@@ -1,105 +1,100 @@
-# Lấy API Supabase và kết nối TAILG
+# Lấy API Supabase và kết nối TAILG V3
 
-TAILG V2 dùng **Supabase PostgreSQL + Supabase Storage**. Frontend không gọi Supabase trực tiếp. Mọi truy cập database/storage đi qua Next.js server nên khóa server không bị lộ ra trình duyệt.
+TAILG dùng **Supabase PostgreSQL + private Supabase Storage**. Frontend không gọi database bằng khóa bí mật; mọi truy cập có quyền cao đi qua Next.js server.
 
 ## 1. Tạo project Supabase
 
-1. Đăng nhập Supabase.
-2. Chọn **New project**.
-3. Đặt tên, ví dụ `tailg-site-control`.
-4. Chọn region gần công trường/người dùng.
-5. Lưu database password ở nơi an toàn.
+1. Supabase → **New project**.
+2. Đặt tên, ví dụ `tailg-site-control`.
+3. Chọn region gần người dùng.
+4. Lưu database password ở nơi an toàn.
 
-## 2. Lấy Project URL và Secret API key
+## 2. Lấy Project URL + Secret API key
 
-Supabase hiện khuyến nghị hệ key mới:
+Trong project Supabase:
 
-- `sb_publishable_...` dùng cho browser/mobile khi cần.
-- `sb_secret_...` dùng cho backend/server và có quyền elevated.
+1. Bấm **Connect** để xem Project URL, hoặc vào **Settings → API Keys**.
+2. Copy Project URL dạng `https://xxxxx.supabase.co`.
+3. Trong **Settings → API Keys**, tạo/copy **Secret key** dạng `sb_secret_...`.
+4. Không đặt secret dưới tên `NEXT_PUBLIC_*`.
 
-TAILG V2 hiện chỉ cần **server Secret key** vì mọi truy cập Supabase đều đi qua Next.js backend.
-
-Trong Supabase Dashboard của project:
-
-1. Mở **Connect** để xem/copy Project URL, hoặc vào **Settings → API Keys**.
-2. Copy **Project URL**, ví dụ `https://xxxxx.supabase.co`.
-3. Trong **Settings → API Keys**, tạo hoặc copy **Secret key** dạng `sb_secret_...`.
-4. Không dùng Secret key trong browser và không đặt nó dưới tên biến bắt đầu bằng `NEXT_PUBLIC_`.
-
-Gán vào `.env.local`:
+`.env.local` / Vercel:
 
 ```env
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_SECRET_KEY=sb_secret_xxxxx
 ```
 
-Nếu project cũ chưa có Secret key mới, app vẫn hỗ trợ legacy `service_role` bằng biến:
+Project cũ có thể dùng `SUPABASE_SERVICE_ROLE_KEY`, nhưng V3 ưu tiên `SUPABASE_SECRET_KEY`.
 
-```env
-SUPABASE_SERVICE_ROLE_KEY=xxxxx
-```
+## 3. Chạy database nền V2
 
-Nhưng nên ưu tiên `SUPABASE_SECRET_KEY`.
-
-## 3. Tạo database
-
-Supabase → **SQL Editor** → chạy lần lượt:
-
-1. `supabase/schema.sql`
-2. `supabase/seed.sql`
-3. `supabase/functions.sql`
-
-Trước khi chạy `seed.sql`, thay chuỗi:
+Supabase → **SQL Editor**, copy toàn bộ code bên trong từng file rồi Run, đúng thứ tự:
 
 ```text
-CHANGE_THIS_PIN_BEFORE_RUN
+1. supabase/schema.sql
+2. supabase/seed.sql
+3. supabase/functions.sql
 ```
 
-bằng PIN Pilot mà bạn muốn cấp cho 7 tài khoản. PIN được băm bằng `pgcrypto`, database không lưu PIN dạng chữ thường.
+Không gõ tên file `supabase/schema.sql` vào SQL Editor; SQL Editor cần **nội dung SQL của file**.
 
-Ba file SQL sẽ tạo:
+`schema.sql` tạo extension `pgcrypto`. File seed/functions mới đã gọi `extensions.crypt` / đặt `extensions` trong search path để phù hợp Supabase.
 
-- `app_users`
-- `zones`
-- `daily_reports`
-- `work_items`
-- `foundations`
-- `report_photos`
-- `project_milestones`
-- RPC `authenticate_user`
-- RPC `create_work_entry`
-- private Storage bucket `site-photos`
-- 7 tài khoản Pilot
-- các khu vực Xưởng 1/2/3, Nhà ăn, Nhà xe, Bể ngầm, Bể XLNT, Hạ tầng
-- 4 mốc tiến độ móng ban đầu
+## 4. Chạy migration V3
 
-## 4. Tạo SESSION_SECRET
+Sau ba file nền, chạy tiếp:
 
-### macOS / Linux / Git Bash
-
-```bash
-openssl rand -base64 48
+```text
+4. supabase/migrations/20260907_daily_reporting_v3.sql
+5. supabase/migrations/20260907_weekly_report_assets.sql
 ```
 
-### Node.js
+Migration V3 thêm:
+
+- `raw_message`, `submitted_at` cho báo cáo ngày;
+- `report_labor_entries`;
+- `report_equipment_entries`;
+- `report_tasks`;
+- metadata loại/khu vực ảnh;
+- `weekly_report_assets`;
+- RPC `save_daily_report_v3`;
+- cho phép private bucket `site-photos` lưu thêm PDF nguồn của mặt bằng tuần.
+
+## 5. Đưa bộ dữ liệu thật 07/09/2026 vào PostgreSQL
+
+Chạy:
+
+```text
+6. supabase/seed_real_2026_09_07.sql
+```
+
+File này chứa báo cáo thật của 6 đội ngày 07/09/2026. Cuối file có câu kiểm tra, kết quả kỳ vọng:
+
+```text
+report_date      2026-09-07
+direct_workers   320
+technical_staff  30
+teams_reported   6
+```
+
+`direct_workers` = công nhật + cốt thép + cốp pha/ván khuôn, khớp cách bảng theo dõi nhân công hiện tại đang tổng hợp. Kỹ thuật, lái máy, bảo vệ, TD được lưu riêng.
+
+## 6. Tạo SESSION_SECRET
+
+Terminal:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 ```
 
-Copy kết quả vào:
+Copy kết quả:
 
 ```env
-SESSION_SECRET=chuoi-rat-dai-vua-tao
+SESSION_SECRET=chuoi-ngau-nhien-rat-dai
 ```
 
-## 5. Tạo `.env.local`
-
-```bash
-cp .env.example .env.local
-```
-
-Điền:
+## 7. Bốn biến môi trường cần có
 
 ```env
 SUPABASE_URL=https://xxxxx.supabase.co
@@ -108,28 +103,9 @@ SESSION_SECRET=xxxxx
 SUPABASE_STORAGE_BUCKET=site-photos
 ```
 
-## 6. Chạy local
+Trên Vercel: **Project → Settings → Environment Variables** → thêm đủ 4 biến → Save → Redeploy.
 
-```bash
-npm install
-npm run dev
-```
-
-Mở `http://localhost:3000`.
-
-Kiểm tra backend tại `http://localhost:3000/api/health`.
-
-Kết quả đúng:
-
-```json
-{
-  "ok": true,
-  "database": "connected",
-  "storage": "connected"
-}
-```
-
-## 7. 7 tài khoản Pilot
+## 8. 7 tài khoản Pilot
 
 | username | Họ tên | Vai trò |
 |---|---|---|
@@ -141,57 +117,56 @@ Kết quả đúng:
 | `quang` | Nguyễn Ánh Quang | Đội trưởng |
 | `tho` | Nguyễn Duy Thọ | Đội trưởng |
 
-## 8. Đổi PIN sau này
+## 9. Đổi PIN
 
-Ví dụ đổi PIN của Bùi Văn Đức:
+Ví dụ:
 
 ```sql
 update public.app_users
-set pin_hash = crypt('PIN_MOI', gen_salt('bf', 12))
+set pin_hash = extensions.crypt('PIN_MOI', extensions.gen_salt('bf', 12))
 where username = 'duc';
 ```
 
-## 9. Ảnh được lưu ở đâu?
+## 10. Chạy local
 
-File ảnh thật:
+```bash
+cp .env.example .env.local
+npm install
+npm run lint
+npm run build
+npm run dev
+```
+
+Mở `http://localhost:3000`.
+
+Kiểm tra:
+
+```text
+/api/health
+/reports/new
+/manpower
+/weekly-report
+```
+
+`/api/health` đúng khi trả database + storage `connected`.
+
+## 11. Ảnh và PDF lưu ở đâu?
 
 ```text
 Supabase Storage
 └── site-photos/
-    └── <leader_id>/
-        └── <YYYY-MM-DD>/
-            └── <uuid>-<ten-file>
+    ├── <leader_id>/<YYYY-MM-DD>/work/...  # ảnh báo cáo ngày
+    └── weekly/<from>-<to>/...             # PDF nguồn + ảnh crop mặt bằng
 ```
 
-PostgreSQL chỉ lưu metadata trong `report_photos`: `report_id`, `storage_path`, `caption`, `created_by`, `created_at`.
+PostgreSQL chỉ giữ `storage_path` và metadata. Bucket là private; web dùng signed URL khi hiển thị.
 
-Bucket là **private**. Dashboard tạo signed URL ngắn hạn khi cần xem ảnh.
+## 12. Test V3
 
-## 10. Deploy Vercel
-
-1. Import GitHub repository `phu20032k1/tailg`.
-2. Vercel tự nhận framework **Next.js**.
-3. Vào **Settings → Environment Variables**.
-4. Thêm đủ:
-
-```text
-SUPABASE_URL
-SUPABASE_SECRET_KEY
-SESSION_SECRET
-SUPABASE_STORAGE_BUCKET
-```
-
-5. Redeploy.
-6. Mở `/api/health`.
-7. Khi database và storage đều `connected`, mới bắt đầu nhập dữ liệu thật.
-
-## 11. Test luồng 7 tài khoản
-
-1. Đăng nhập `duc`, nhập `M-01`, `M-02` và 1 ảnh.
-2. Đăng xuất.
-3. Đăng nhập `toan`, thử nhập lại `M-01`.
-4. Backend phải báo móng đã thuộc đội khác.
-5. Đăng nhập `tung`.
-6. Dashboard phải thấy báo cáo của Đức, nhân công, móng và ảnh.
-7. Dùng điện thoại khác đăng nhập đội khác và nhập dữ liệu.
-8. Vì dữ liệu nằm trên PostgreSQL/Storage nên các thiết bị nhìn chung một nguồn dữ liệu.
+1. Login một Đội trưởng.
+2. Dán nguyên tin nhắn báo cáo vào `/reports/new`.
+3. Bấm **Bóc tách tin nhắn** và rà lại nhân lực/máy móc/công việc.
+4. Upload ảnh thật và lưu.
+5. Login `tung` → `/manpower` → kiểm tra tổng hợp → **Xuất Excel**.
+6. `/weekly-report` → chọn tuần → upload PDF nguồn + ảnh crop mặt bằng → **Xuất PowerPoint**.
+7. Kiểm tra file PPTX trước khi gửi Chủ đầu tư; phần kế hoạch tuần tới là bản nháp tổng hợp, cần Ban điều hành duyệt.
