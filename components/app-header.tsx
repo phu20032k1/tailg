@@ -1,4 +1,4 @@
-import { CalendarDays, Cloud } from "lucide-react";
+import { CalendarDays, LogOut } from "lucide-react";
 import type { SessionUser } from "@/lib/types";
 import { initials } from "@/lib/format";
 
@@ -13,7 +13,7 @@ export function AppHeader({ user }: { user: SessionUser }) {
 
   return (
     <header className="app-header">
-      <div>
+      <div className="header-user-block">
         <span className="eyebrow">
           {user.role === "commander" ? "Chỉ huy trưởng" : "Đội trưởng"}
         </span>
@@ -21,15 +21,17 @@ export function AppHeader({ user }: { user: SessionUser }) {
       </div>
 
       <div className="header-actions">
-        <div className="header-chip">
-          <Cloud size={16} />
-          <span>Đã kết nối</span>
-        </div>
         <div className="header-chip desktop-only">
-          <CalendarDays size={16} />
+          <CalendarDays size={17} />
           <span>{today}</span>
         </div>
         <div className="user-avatar" title={user.fullName}>{initials(user.fullName)}</div>
+        <form action="/api/auth/logout" method="post" className="header-logout-form">
+          <button className="header-logout-button" type="submit" aria-label="Đăng xuất">
+            <LogOut size={18} />
+            <span>Đăng xuất</span>
+          </button>
+        </form>
       </div>
     </header>
   );
