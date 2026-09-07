@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readSessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
+import { ensureStorageBucket, getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -60,6 +60,16 @@ export async function POST(
   }
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ ok: false, error: "Ảnh tối đa 10 MB." }, { status: 400 });
+  }
+
+  try {
+    await ensureStorageBucket();
+  } catch (error) {
+    console.error("storage bootstrap:", error);
+    return NextResponse.json(
+      { ok: false, error: "Storage chưa sẵn sàng. Kiểm tra Supabase Secret key." },
+      { status: 500 }
+    );
   }
 
   const path = `${report.leader_id}/${report.report_date}/${photoType}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
