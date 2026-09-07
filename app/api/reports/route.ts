@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: false, error: "Tài khoản đội trưởng không hợp lệ." }, { status: 400 });
       }
       if (message.includes("save_daily_report_v3")) {
-        return NextResponse.json({ ok: false, error: "Database chưa chạy migration V3." }, { status: 503 });
+        return NextResponse.json({ ok: false, error: "Chức năng lưu báo cáo chưa sẵn sàng. Vui lòng thử lại sau." }, { status: 503 });
       }
       return NextResponse.json({ ok: false, error: "Không lưu được báo cáo." }, { status: 500 });
     }
@@ -102,6 +102,6 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error(error);
-    return NextResponse.json({ ok: false, error: "Lỗi hệ thống." }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Chưa thể lưu báo cáo lúc này." }, { status: 500 });
   }
 }
