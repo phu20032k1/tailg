@@ -2,12 +2,12 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
+let bucketReady = false;
 
 function cleanEnvValue(raw: string | undefined, key: string) {
   let value = (raw || "").trim();
   if (!value) return "";
 
-  // Be forgiving if a value was pasted as KEY=value or wrapped in quotes.
   if (value.startsWith(`${key}=`)) value = value.slice(key.length + 1).trim();
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
     value = value.slice(1, -1).trim();
@@ -40,10 +40,13 @@ export function getSupabaseConfig() {
     throw new Error("SUPABASE_URL is invalid. It must start with https://");
   }
 
-  // Supabase client needs the project origin, not /rest/v1, /auth/v1 or a DB connection string path.
   const url = parsed.origin;
 
-  if (!parsed.hostname.endsWith(".supabase.co") && !parsed.hostname.endsWith(".supabase.net") && parsed.hostname !== "localhost") {
+  if (
+    !parsed.hostname.endsWith(".supabase.co") &&
+    !parsed.hostname.endsWith(".supabase.net") &&
+    parsed.hostname !== "localhost"
+  ) {
     throw new Error("SUPABASE_URL host is invalid. Copy the Project URL from Supabase Settings → API.");
   }
 
@@ -65,7 +68,28 @@ export function getSupabaseAdmin() {
   return client;
 }
 
-export const STORAGE_BUCKET = cleanEnvValue(
-  process.env.SUPABASE_STORAGE_BUCKET,
-  "SUPABASE_STORAGE_BUCKET"
-) || "site-photos";
+export const STORAGE_BUCKET =
+  cleanEnvValue(process.env.SUPABASE_STORAGE_BUCKET, "SUPABASE_STORAGE_BUCKET") ||
+  "site-photos";
+
+export async function ensureStorageBucket() {
+  if (bucketReady) return STORAGE_BUCKET;
+
+  const db = getSupabaseAdmin();
+  const { data: buckets, error: listError } = await db.storage.listBuckets();
+  if (listError) throw listError;
+
+  if (!buckets.some((bucket) => bucket.id === STORAGE_BUCKET)) {
+    const { error: createError } = await db.storage.createBucket(STORAGE_BUCKET, {
+      public: false,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
+    });
+    if (createError && !createError.message.toLowerCase().includes("already exists")) {
+      throw createError;
+    }
+  }
+
+  bucketReady = true;
+  return STORAGE_BUCKET;
+}
