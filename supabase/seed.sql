@@ -5,17 +5,18 @@ declare
 begin
   insert into public.app_users (id, username, full_name, role, pin_hash, active)
   values
-    ('00000000-0000-0000-0000-000000000001', 'tung', 'Phan Viết Tùng', 'commander', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000002', 'duc', 'Bùi Văn Đức', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000003', 'toan', 'Tăng Văn Toán', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000004', 'toan-tran', 'Trần Văn Toãn', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000005', 'tuan', 'Nguyễn Văn Tuần', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000006', 'quang', 'Nguyễn Ánh Quang', 'leader', crypt(v_pin, gen_salt('bf', 12)), true),
-    ('00000000-0000-0000-0000-000000000007', 'tho', 'Nguyễn Duy Thọ', 'leader', crypt(v_pin, gen_salt('bf', 12)), true)
+    ('00000000-0000-0000-0000-000000000001', 'tung', 'Phan Viết Tùng', 'commander', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000002', 'duc', 'Bùi Văn Đức', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000003', 'toan', 'Tăng Văn Toán', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000004', 'toan-tran', 'Trần Văn Toãn', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000005', 'tuan', 'Nguyễn Văn Tuần', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000006', 'quang', 'Nguyễn Ánh Quang', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true),
+    ('00000000-0000-0000-0000-000000000007', 'tho', 'Nguyễn Duy Thọ', 'leader', extensions.crypt(v_pin, extensions.gen_salt('bf', 12)), true)
   on conflict (id) do update set
     username = excluded.username,
     full_name = excluded.full_name,
     role = excluded.role,
+    pin_hash = excluded.pin_hash,
     active = excluded.active;
 end $$;
 
