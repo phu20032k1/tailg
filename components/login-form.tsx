@@ -43,7 +43,7 @@ export function LoginForm() {
       router.replace("/");
       router.refresh();
     } catch {
-      setError("Không gọi được máy chủ đăng nhập. Kiểm tra deployment Vercel.");
+      setError("Không kết nối được máy chủ. Vui lòng thử lại sau ít phút.");
     } finally {
       setLoading(false);
     }
@@ -51,10 +51,10 @@ export function LoginForm() {
 
   return (
     <form className="login-card" onSubmit={submit}>
-      <span className="badge success">POSTGRESQL + SUPABASE STORAGE</span>
-      <h2>Đăng nhập công trường</h2>
+      <span className="badge success">Hệ thống báo cáo công trường</span>
+      <h2>Đăng nhập</h2>
       <p className="muted">
-        Chọn đúng tài khoản. Dữ liệu của đội được phân quyền ở backend.
+        Chọn đúng tên người dùng và nhập mã PIN được cấp cho tài khoản.
       </p>
 
       <label className="field">
@@ -68,23 +68,23 @@ export function LoginForm() {
 
       <label className="field">
         <span>Mã PIN</span>
-        <input name="pin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="Nhập PIN tài khoản" required />
+        <input name="pin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="Nhập mã PIN" required />
       </label>
 
       {error ? (
         <div className="form-error">
           <strong>Không đăng nhập được.</strong>
           <div>{error}</div>
-          <a href="/api/health" target="_blank" rel="noreferrer">Mở kiểm tra Supabase / API →</a>
+          <a href="/api/health" target="_blank" rel="noreferrer">Kiểm tra kết nối hệ thống →</a>
         </div>
       ) : null}
 
       <button className="button primary wide" disabled={loading} type="submit">
-        {loading ? "Đang đăng nhập..." : "Vào hệ thống →"}
+        {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
       <p className="form-help">
-        PIN được tạo trong <code>supabase/seed.sql</code>. Trang kiểm tra kết nối không hiển thị secret.
+        Nếu quên mã PIN, liên hệ người quản lý hệ thống để được cấp lại.
       </p>
     </form>
   );
