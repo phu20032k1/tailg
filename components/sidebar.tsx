@@ -44,7 +44,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <span className="brand-logo small">T</span>
-        <div><strong>TAILG</strong><span>Site Control V3</span></div>
+        <div><strong>TAILG</strong><span>Điều hành công trường</span></div>
       </div>
 
       <div className="sidebar-project">
@@ -61,7 +61,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="cloud-status"><span className="status-dot" /><div><strong>Cloud Database</strong><span>PostgreSQL + Storage</span></div></div>
+        <div className="cloud-status"><span className="status-dot" /><div><strong>Dữ liệu trực tuyến</strong><span>Đã kết nối máy chủ</span></div></div>
         <form action="/api/auth/logout" method="post"><button className="logout-button" type="submit"><LogOut size={17} />Đăng xuất</button></form>
       </div>
     </aside>
