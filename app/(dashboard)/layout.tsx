@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
 import { AppHeader } from "@/components/app-header";
+import { ChatPopup } from "@/components/chat-popup";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -11,6 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <AppHeader user={user} />
         <div className="page-shell">{children}</div>
       </main>
+      <ChatPopup user={user} />
     </div>
   );
 }
