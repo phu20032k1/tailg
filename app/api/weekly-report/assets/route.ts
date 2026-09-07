@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readSessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
+import { ensureStorageBucket, getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const MAX_IMAGE = 10 * 1024 * 1024;
@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
   }
   if (pdf instanceof File && (pdf.type !== "application/pdf" || pdf.size > MAX_PDF)) {
     return NextResponse.json({ ok: false, error: "PDF nguồn tối đa 30 MB." }, { status: 400 });
+  }
+
+  try {
+    await ensureStorageBucket();
+  } catch (error) {
+    console.error("weekly storage bootstrap:", error);
+    return NextResponse.json({ ok: false, error: "Storage Supabase chưa sẵn sàng." }, { status: 500 });
   }
 
   const db = getSupabaseAdmin();
