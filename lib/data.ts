@@ -60,20 +60,50 @@ export async function getFormMeta(user: SessionUser) {
 
 async function listReports(user: SessionUser, limit = 50, from?: string, to?: string) {
   const db = getSupabaseAdmin();
+
+  function applyFilters<T>(query: T & { eq: Function; gte: Function; lte: Function }) {
+    let next: any = query;
+    if (user.role === "leader") next = next.eq("leader_id", user.id);
+    if (from) next = next.gte("report_date", from);
+    if (to) next = next.lte("report_date", to);
+    return next;
+  }
+
   let query = db
     .from("daily_reports")
     .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,created_at,updated_at")
     .order("report_date", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(limit);
+  query = applyFilters(query);
 
-  if (user.role === "leader") query = query.eq("leader_id", user.id);
-  if (from) query = query.gte("report_date", from);
-  if (to) query = query.lte("report_date", to);
+  const primary = await query;
+  if (!primary.error) return (primary.data || []) as ReportRow[];
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []) as ReportRow[];
+  const missingV3Columns =
+    primary.error.message?.includes("raw_message") ||
+    primary.error.message?.includes("submitted_at") ||
+    primary.error.code === "42703";
+  if (!missingV3Columns) throw primary.error;
+
+  // Old Pilot databases do not yet have raw_message/submitted_at. Keep the
+  // dashboard and history pages working while /api/health clearly reports that
+  // the V3 migration still needs to be applied.
+  let fallback = db
+    .from("daily_reports")
+    .select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at")
+    .order("report_date", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  fallback = applyFilters(fallback);
+  const legacy = await fallback;
+  if (legacy.error) throw legacy.error;
+
+  return (legacy.data || []).map((report) => ({
+    ...report,
+    raw_message: null,
+    submitted_at: report.updated_at || report.created_at
+  })) as ReportRow[];
 }
 
 async function listWorkItems(reportIds: string[]) {
