@@ -36,14 +36,14 @@ export function LoginForm() {
 
       const result = await response.json();
       if (!response.ok) {
-        setError(result.error || "Không đăng nhập được.");
+        setError(result.error || "Không đăng nhập được. Vui lòng kiểm tra lại tài khoản và mã PIN.");
         return;
       }
 
       router.replace("/");
       router.refresh();
     } catch {
-      setError("Không kết nối được máy chủ. Vui lòng thử lại sau ít phút.");
+      setError("Không đăng nhập được lúc này. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -51,11 +51,8 @@ export function LoginForm() {
 
   return (
     <form className="login-card" onSubmit={submit}>
-      <span className="badge success">Hệ thống báo cáo công trường</span>
       <h2>Đăng nhập</h2>
-      <p className="muted">
-        Chọn đúng tên người dùng và nhập mã PIN được cấp cho tài khoản.
-      </p>
+      <p className="muted">Chọn tài khoản và nhập mã PIN.</p>
 
       <label className="field">
         <span>Tài khoản</span>
@@ -71,21 +68,11 @@ export function LoginForm() {
         <input name="pin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="Nhập mã PIN" required />
       </label>
 
-      {error ? (
-        <div className="form-error">
-          <strong>Không đăng nhập được.</strong>
-          <div>{error}</div>
-          <a href="/api/health" target="_blank" rel="noreferrer">Kiểm tra kết nối hệ thống →</a>
-        </div>
-      ) : null}
+      {error ? <div className="form-error"><strong>{error}</strong></div> : null}
 
       <button className="button primary wide" disabled={loading} type="submit">
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
-
-      <p className="form-help">
-        Nếu quên mã PIN, liên hệ người quản lý hệ thống để được cấp lại.
-      </p>
     </form>
   );
 }
