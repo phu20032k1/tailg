@@ -15,6 +15,7 @@ import "./management-report-auto.css";
 import "./mobile-tabbar.css";
 import "./professional-ui.css";
 import "./commercial.css";
+import "./report-audit-v7.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
