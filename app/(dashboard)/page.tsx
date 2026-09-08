@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, CalendarDays, Camera, CheckCircle2, ClipboardPlus, HardHat, Rows3, Users, Building2, AlertCircle } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getFoundations, getReportRange } from "@/lib/data";
@@ -24,6 +25,7 @@ function addDays(dateText: string, days: number) {
 
 export default async function DashboardPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser();
+  if (!["commander", "leader"].includes(user.role)) redirect("/commercial");
   const data = await getDashboardData(user);
   const params = (await searchParams) || {};
   const mode = params.view === "week" ? "week" : "day";
@@ -64,13 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           </div>
         </section>
 
-        <PeriodFilter
-          basePath="/"
-          mode={mode}
-          selectedDate={selectedDate}
-          periodTitle={mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)}
-          periodNote={mode === "week" ? `${reportDays} ngày có dữ liệu` : "Số liệu trong ngày"}
-        />
+        <PeriodFilter basePath="/" mode={mode} selectedDate={selectedDate} periodTitle={mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)} periodNote={mode === "week" ? `${reportDays} ngày có dữ liệu` : "Số liệu trong ngày"} />
 
         <section className="stats-grid commander-stats">
           <StatCard label={mode === "week" ? "Nhân lực bình quân" : "Công nhân"} value={mode === "week" ? averageWorkers : workerTotal} hint={`${technicalTotal} lượt cán bộ kỹ thuật`} icon={HardHat} tone="blue" />
@@ -80,10 +76,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         </section>
 
         <section className="commander-team-section">
-          <div className="commander-section-head">
-            <div><span className="eyebrow">06 ĐỘI THI CÔNG</span><h2>Tình hình từng đội</h2></div>
-            <Link className="text-link" href={`/reports?from=${from}&to=${to}`}>Xem toàn bộ báo cáo <ArrowRight size={15} /></Link>
-          </div>
+          <div className="commander-section-head"><div><span className="eyebrow">06 ĐỘI THI CÔNG</span><h2>Tình hình từng đội</h2></div><Link className="text-link" href={`/reports?from=${from}&to=${to}`}>Xem toàn bộ báo cáo <ArrowRight size={15} /></Link></div>
           <div className="commander-team-grid">
             {teamRows.map(({ leader, reports, latest, foundationsOfTeam, teamZones, zoneNames, avgProgress, avgWorkers, teamPhotos }) => (
               <article className="commander-team-card" key={leader.id}>
@@ -93,18 +86,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                   <span className={`report-state ${reports.length ? "done" : "missing"}`}>{reports.length ? <><CheckCircle2 size={14}/> Đã báo cáo</> : <><AlertCircle size={14}/> Chưa báo cáo</>}</span>
                 </div>
                 <div className="team-zone-line"><Building2 size={15}/><span>{zoneNames.length ? zoneNames.join(" · ") : "Chưa gán khu vực"}</span></div>
-                <div className="team-metrics">
-                  <div><span>{mode === "week" ? "CN bình quân" : "Công nhân"}</span><strong>{mode === "week" ? avgWorkers : Number(latest?.workers || 0)}</strong></div>
-                  <div><span>Báo cáo</span><strong>{reports.length}</strong></div>
-                  <div><span>Số móng</span><strong>{foundationsOfTeam.length}</strong></div>
-                </div>
+                <div className="team-metrics"><div><span>{mode === "week" ? "CN bình quân" : "Công nhân"}</span><strong>{mode === "week" ? avgWorkers : Number(latest?.workers || 0)}</strong></div><div><span>Báo cáo</span><strong>{reports.length}</strong></div><div><span>Số móng</span><strong>{foundationsOfTeam.length}</strong></div></div>
                 <div className="team-progress-row"><span>Tiến độ tổng hợp</span><b>{formatPercent(avgProgress)}%</b></div>
                 <div className="progress-track large"><i style={{ width: `${Math.min(100, Math.max(0, avgProgress))}%` }} /></div>
                 {teamZones.length > 1 ? <div className="team-zone-progress-list">{teamZones.map((zone) => <div key={zone.id}><span>{zone.name}</span><b>{formatPercent(Number(zone.progress || 0))}%</b><div className="progress-track"><i style={{ width: `${Math.min(100, Math.max(0, Number(zone.progress || 0)))}%` }}/></div></div>)}</div> : null}
-                <div className="team-latest-work">
-                  <span>Công việc gần nhất</span>
-                  <p>{latest?.tasks?.[0]?.description_vi || latest?.workItems?.[0]?.stage || "Chưa có công việc trong kỳ."}</p>
-                </div>
+                <div className="team-latest-work"><span>Công việc gần nhất</span><p>{latest?.tasks?.[0]?.description_vi || latest?.workItems?.[0]?.stage || "Chưa có công việc trong kỳ."}</p></div>
                 <TeamPhotoStrip photos={teamPhotos} />
                 <Link className="team-detail-link" href={`/teams/${leader.id}?view=${mode}&date=${selectedDate}`}>Xem chi tiết <ArrowRight size={14}/></Link>
               </article>
@@ -113,16 +99,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         </section>
 
         <section className="dashboard-grid commander-lower-grid">
-          <article className="panel lazy-section">
-            <div className="panel-head"><div><span className="eyebrow">MẶT BẰNG PHÂN KHU</span><h2>Tiến độ theo khu vực</h2></div><Link className="text-link" href="/map">Xem đầy đủ <ArrowRight size={15}/></Link></div>
-            <div className="panel-body"><SiteMap zones={data.zones}/></div>
-          </article>
-          <article className="panel lazy-section">
-            <div className="panel-head"><div><span className="eyebrow">TÌNH TRẠNG BÁO CÁO</span><h2>{mode === "week" ? "Theo dõi tuần" : "Trong ngày"}</h2></div><CalendarDays size={19}/></div>
-            <div className="panel-body commander-reporting-list">
-              {teamRows.map(({ leader, reports, latest }) => <div className="reporting-line" key={leader.id}><div><strong>{leader.full_name}</strong><span>{latest ? `${formatDate(latest.report_date)} · ${latest.workers} công nhân` : "Chưa có dữ liệu"}</span></div><b className={reports.length ? "ok" : "warn"}>{reports.length ? `${reports.length} báo cáo` : "Thiếu"}</b></div>)}
-            </div>
-          </article>
+          <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">MẶT BẰNG PHÂN KHU</span><h2>Tiến độ theo khu vực</h2></div><Link className="text-link" href="/map">Xem đầy đủ <ArrowRight size={15}/></Link></div><div className="panel-body"><SiteMap zones={data.zones}/></div></article>
+          <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">TÌNH TRẠNG BÁO CÁO</span><h2>{mode === "week" ? "Theo dõi tuần" : "Trong ngày"}</h2></div><CalendarDays size={19}/></div><div className="panel-body commander-reporting-list">{teamRows.map(({ leader, reports, latest }) => <div className="reporting-line" key={leader.id}><div><strong>{leader.full_name}</strong><span>{latest ? `${formatDate(latest.report_date)} · ${latest.workers} công nhân` : "Chưa có dữ liệu"}</span></div><b className={reports.length ? "ok" : "warn"}>{reports.length ? `${reports.length} báo cáo` : "Thiếu"}</b></div>)}</div></article>
         </section>
 
         {latestPhotos.length ? <section className="panel section-gap lazy-section"><div className="panel-head"><div><span className="eyebrow">ẢNH HIỆN TRƯỜNG</span><h2>Ảnh trong {mode === "week" ? "tuần" : "ngày"}</h2></div><Camera size={19}/></div><div className="panel-body"><PhotoGrid photos={latestPhotos}/></div></section> : null}
