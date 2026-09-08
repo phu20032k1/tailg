@@ -12,85 +12,139 @@ import {
   History,
   LayoutDashboard,
   Map,
-  Menu,
+  MoreHorizontal,
   Rows3,
   Users,
   X
 } from "lucide-react";
 import type { SessionUser } from "@/lib/types";
 
-const commanderNav = [
-  { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/reports", label: "Nhật ký 6 đội", icon: History },
-  { href: "/management-report", label: "Báo cáo ngày BĐH", icon: FileText },
-  { href: "/manpower", label: "Tổng hợp nhân lực", icon: BarChart3 },
-  { href: "/weekly-report", label: "Báo cáo tuần", icon: FileBarChart },
-  { href: "/map", label: "Mặt bằng tiến độ", icon: Map },
-  { href: "/foundations", label: "Danh mục móng", icon: Rows3 },
-  { href: "/teams", label: "6 đội thi công", icon: Users }
+type NavItem = {
+  href: string;
+  label: string;
+  mobileLabel: string;
+  icon: typeof LayoutDashboard;
+};
+
+const commanderNav: NavItem[] = [
+  { href: "/", label: "Tổng quan", mobileLabel: "Tổng quan", icon: LayoutDashboard },
+  { href: "/reports", label: "Nhật ký 6 đội", mobileLabel: "Nhật ký", icon: History },
+  { href: "/management-report", label: "Báo cáo ngày BĐH", mobileLabel: "Báo cáo ngày", icon: FileText },
+  { href: "/manpower", label: "Tổng hợp nhân lực", mobileLabel: "Nhân lực", icon: BarChart3 },
+  { href: "/weekly-report", label: "Báo cáo tuần", mobileLabel: "Báo cáo tuần", icon: FileBarChart },
+  { href: "/map", label: "Mặt bằng tiến độ", mobileLabel: "Mặt bằng", icon: Map },
+  { href: "/foundations", label: "Danh mục móng", mobileLabel: "Móng", icon: Rows3 },
+  { href: "/teams", label: "6 đội thi công", mobileLabel: "6 đội", icon: Users }
 ];
 
-const leaderNav = [
-  { href: "/", label: "Tổng quan đội", icon: LayoutDashboard },
-  { href: "/reports/new", label: "Nhập báo cáo", icon: ClipboardPlus },
-  { href: "/reports", label: "Lịch sử báo cáo", icon: History },
-  { href: "/manpower", label: "Nhân lực đội", icon: BarChart3 },
-  { href: "/map", label: "Khu vực của tôi", icon: Map },
-  { href: "/foundations", label: "Móng của tôi", icon: Rows3 }
+const leaderNav: NavItem[] = [
+  { href: "/", label: "Tổng quan đội", mobileLabel: "Tổng quan", icon: LayoutDashboard },
+  { href: "/reports/new", label: "Nhập báo cáo", mobileLabel: "Nhập báo cáo", icon: ClipboardPlus },
+  { href: "/reports", label: "Lịch sử báo cáo", mobileLabel: "Lịch sử", icon: History },
+  { href: "/manpower", label: "Nhân lực đội", mobileLabel: "Nhân lực", icon: BarChart3 },
+  { href: "/map", label: "Khu vực của tôi", mobileLabel: "Khu vực", icon: Map },
+  { href: "/foundations", label: "Móng của tôi", mobileLabel: "Móng", icon: Rows3 }
 ];
+
+function isActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Sidebar({ user }: { user: SessionUser }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const items = user.role === "commander" ? commanderNav : leaderNav;
+  const primaryItems = items.slice(0, 4);
+  const moreItems = items.slice(4);
+  const moreActive = moreItems.some((item) => isActive(pathname, item.href));
 
   return (
-    <aside className={mobileOpen ? "sidebar mobile-open" : "sidebar"}>
-      <div className="sidebar-mobile-head">
-        <div className="sidebar-mobile-brand">
-          <span className="brand-logo small">T</span>
-          <div><strong>TAILG</strong><span>Điều hành công trường</span></div>
-        </div>
-        <button
-          className="mobile-menu-button"
-          type="button"
-          onClick={() => setMobileOpen((value) => !value)}
-          aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X size={23} /> : <Menu size={23} />}
-        </button>
-      </div>
+    <>
+      <aside className="sidebar">
+        <div className="sidebar-desktop-content">
+          <div className="sidebar-brand">
+            <span className="brand-logo small">T</span>
+            <div><strong>TAILG</strong><span>Điều hành công trường</span></div>
+          </div>
 
-      <div className="sidebar-desktop-content">
-        <div className="sidebar-brand">
-          <span className="brand-logo small">T</span>
-          <div><strong>TAILG</strong><span>Điều hành công trường</span></div>
+          <div className="sidebar-project">
+            <Building2 size={18} />
+            <div><span>Dự án</span><strong>Nhà máy TAILG Việt Nam</strong></div>
+          </div>
         </div>
 
-        <div className="sidebar-project">
-          <Building2 size={18} />
-          <div><span>Dự án</span><strong>Nhà máy TAILG Việt Nam</strong></div>
-        </div>
-      </div>
+        <nav className="sidebar-nav">
+          {items.map((item) => {
+            const active = isActive(pathname, item.href);
+            const Icon = item.icon;
+            return (
+              <Link className={active ? "nav-link active" : "nav-link"} href={item.href} key={item.href}>
+                <Icon size={19} strokeWidth={1.9} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
 
-      <nav className="sidebar-nav">
-        {items.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      <nav className="mobile-tabbar" aria-label="Điều hướng chính trên điện thoại">
+        {primaryItems.map((item) => {
           const Icon = item.icon;
+          const active = isActive(pathname, item.href);
           return (
             <Link
-              className={active ? "nav-link active" : "nav-link"}
+              className={active ? "mobile-tab-item active" : "mobile-tab-item"}
               href={item.href}
               key={item.href}
               onClick={() => setMobileOpen(false)}
             >
-              <Icon size={19} strokeWidth={1.9} />
-              <span>{item.label}</span>
+              <Icon aria-hidden="true" />
+              <span>{item.mobileLabel}</span>
             </Link>
           );
         })}
+        <button
+          className={moreActive || mobileOpen ? "mobile-tab-item active" : "mobile-tab-item"}
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Mở thêm chức năng"
+          aria-expanded={mobileOpen}
+        >
+          <MoreHorizontal aria-hidden="true" />
+          <span>Thêm</span>
+        </button>
       </nav>
-    </aside>
+
+      {mobileOpen ? (
+        <div className="mobile-more-layer" role="presentation" onClick={() => setMobileOpen(false)}>
+          <section className="mobile-more-sheet" role="dialog" aria-modal="true" aria-label="Thêm chức năng" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-more-handle" />
+            <div className="mobile-more-head">
+              <div><strong>Thêm chức năng</strong><span>Chọn nội dung bạn muốn mở</span></div>
+              <button className="mobile-more-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Đóng">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mobile-more-grid">
+              {moreItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(pathname, item.href);
+                return (
+                  <Link
+                    className={active ? "mobile-more-link active" : "mobile-more-link"}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }
