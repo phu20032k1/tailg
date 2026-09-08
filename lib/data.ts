@@ -9,6 +9,7 @@ import type {
   ProgressItem,
   ReportRow,
   ReportTaskRow,
+  Role,
   SessionUser,
   WorkItemRow,
   Zone
@@ -18,7 +19,7 @@ type UserRow = {
   id: string;
   username: string;
   full_name: string;
-  role: "commander" | "leader";
+  role: Role;
 };
 
 export async function getUsers() {
@@ -26,7 +27,12 @@ export async function getUsers() {
   const { data, error } = await db.from("app_users").select("id,username,full_name,role").eq("active", true);
   if (error) throw error;
   return ((data || []) as UserRow[]).sort((a, b) => {
-    if (a.role !== b.role) return a.role === "commander" ? -1 : 1;
+    if (a.role !== b.role) {
+      if (a.role === "commander") return -1;
+      if (b.role === "commander") return 1;
+      if (a.role === "leader" && b.role !== "leader") return -1;
+      if (b.role === "leader" && a.role !== "leader") return 1;
+    }
     if (a.role === "leader" && b.role === "leader") {
       const rank = teamRank(a.full_name) - teamRank(b.full_name);
       if (rank !== 0) return rank;
@@ -104,14 +110,14 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
     return next;
   }
   let query: any = db.from("daily_reports")
-    .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,weather_morning,weather_afternoon,weather_payload,created_at,updated_at")
+    .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,weather_morning,weather_noon,weather_afternoon,weather_evening,weather_payload,created_at,updated_at")
     .order("report_date", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(limit);
   query = applyFilters(query);
   const primary = await query;
   if (!primary.error) return (primary.data || []) as ReportRow[];
-  const missingExtendedColumns = primary.error.message?.includes("raw_message") || primary.error.message?.includes("submitted_at") || primary.error.message?.includes("weather_morning") || primary.error.code === "42703";
+  const missingExtendedColumns = primary.error.message?.includes("raw_message") || primary.error.message?.includes("submitted_at") || primary.error.message?.includes("weather_morning") || primary.error.message?.includes("weather_noon") || primary.error.code === "42703";
   if (!missingExtendedColumns) throw primary.error;
   let fallback: any = db.from("daily_reports").select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at").order("report_date", { ascending: false }).order("updated_at", { ascending: false }).limit(limit);
   fallback = applyFilters(fallback);
@@ -122,7 +128,9 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
     raw_message: null,
     submitted_at: report.updated_at || report.created_at,
     weather_morning: null,
+    weather_noon: null,
     weather_afternoon: null,
+    weather_evening: null,
     weather_payload: null
   })) as ReportRow[];
 }
