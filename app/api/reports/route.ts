@@ -15,10 +15,10 @@ const reportSchema = z.object({
 export async function POST(request:NextRequest){
   const session=await readSessionToken(request.cookies.get(SESSION_COOKIE)?.value);
   if(!session)return NextResponse.json({ok:false,error:"Phiên đăng nhập đã hết hạn."},{status:401});
+  if(session.role!=="leader")return NextResponse.json({ok:false,error:"Chỉ đội trưởng mới được nhập báo cáo hằng ngày."},{status:403});
   try{
     const body=reportSchema.parse(await request.json());
-    const leaderId=session.role==="leader"?session.id:body.leaderId;
-    if(!leaderId)return NextResponse.json({ok:false,error:"Chỉ huy trưởng cần chọn đội thi công."},{status:400});
+    const leaderId=session.id;
     const db=getSupabaseAdmin();
 
     let selectedFoundations:any[]=[];
