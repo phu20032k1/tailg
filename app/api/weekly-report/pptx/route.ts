@@ -233,7 +233,9 @@ export async function GET(request: NextRequest) {
   }
 
   const output = await pptx.write({ outputType: "nodebuffer" });
-  return new NextResponse(output as Buffer, {
+  const buffer = output as Buffer;
+  const body = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+  return new NextResponse(body, {
     status: 200,
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
