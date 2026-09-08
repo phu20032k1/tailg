@@ -2,6 +2,14 @@ import { CalendarDays, LogOut } from "lucide-react";
 import type { SessionUser } from "@/lib/types";
 import { initials } from "@/lib/format";
 
+const ROLE_LABELS: Record<SessionUser["role"], string> = {
+  commander: "Chỉ huy trưởng",
+  leader: "Đội trưởng",
+  khkt: "Phòng Kinh tế - Kỹ thuật",
+  director: "Ban Giám đốc",
+  finance: "Phòng Tài chính - Kế toán"
+};
+
 export function AppHeader({ user }: { user: SessionUser }) {
   const today = new Intl.DateTimeFormat("vi-VN", {
     weekday: "long",
@@ -14,23 +22,14 @@ export function AppHeader({ user }: { user: SessionUser }) {
   return (
     <header className="app-header">
       <div className="header-user-block">
-        <span className="eyebrow">
-          {user.role === "commander" ? "Chỉ huy trưởng" : "Đội trưởng"}
-        </span>
+        <span className="eyebrow">{ROLE_LABELS[user.role]}</span>
         <h2>{user.fullName}</h2>
       </div>
-
       <div className="header-actions">
-        <div className="header-chip desktop-only">
-          <CalendarDays size={17} />
-          <span>{today}</span>
-        </div>
+        <div className="header-chip desktop-only"><CalendarDays size={17}/><span>{today}</span></div>
         <div className="user-avatar" title={user.fullName}>{initials(user.fullName)}</div>
         <form action="/api/auth/logout" method="post" className="header-logout-form">
-          <button className="header-logout-button" type="submit" aria-label="Đăng xuất">
-            <LogOut size={18} />
-            <span>Đăng xuất</span>
-          </button>
+          <button className="header-logout-button" type="submit" aria-label="Đăng xuất"><LogOut size={18}/><span>Đăng xuất</span></button>
         </form>
       </div>
     </header>
