@@ -54,13 +54,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
     return (
       <>
-        <section className="commander-hero">
+        <section className="commander-hero commander-hero-readonly">
           <div>
             <span className="eyebrow">BAN ĐIỀU HÀNH · TỔNG HỢP 6 ĐỘI</span>
             <h1>Bảng điều hành Chỉ huy trưởng</h1>
             <p>Theo dõi nhân lực, báo cáo, công việc và tiến độ của toàn bộ 6 đội theo ngày hoặc theo tuần.</p>
           </div>
-          <Link className="button primary" href="/reports/new"><ClipboardPlus size={18} /> Nhập báo cáo</Link>
         </section>
 
         <section className="commander-period-bar">
