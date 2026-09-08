@@ -11,6 +11,7 @@ import "./photo-viewer.css";
 import "./team-detail.css";
 import "./report-improvements.css";
 import "./management-report.css";
+import "./management-report-auto.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
