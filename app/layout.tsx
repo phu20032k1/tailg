@@ -16,6 +16,7 @@ import "./mobile-tabbar.css";
 import "./professional-ui.css";
 import "./commercial.css";
 import "./material-workflow.css";
+import "./subcontractor-quantity.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
