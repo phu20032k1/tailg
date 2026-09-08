@@ -6,15 +6,10 @@ import { PAYMENT_STATUS_LABELS } from "@/lib/commercial-shared";
 export { PAYMENT_STATUS_LABELS } from "@/lib/commercial-shared";
 export const DOCUMENT_BUCKET = "project-documents";
 
-export function canSeeCommercial(user: SessionUser) {
-  return ["commander", "khkt", "director", "finance"].includes(user.role);
-}
+export function canSeeCommercial(user: SessionUser) { return ["commander", "khkt", "director", "finance", "leader"].includes(user.role); }
+export function canCreatePayment(user: SessionUser) { return user.role === "commander"; }
 
-export function canCreatePayment(user: SessionUser) {
-  return user.role === "commander";
-}
-
-function normalizePackages(rows: any[]) {
+function normalizePackages(rows: any[], paymentRequests: any[] = []) {
   return rows.map((item: any) => {
     const updates = [...(item.work_package_updates || [])].sort((a: any, b: any) => String(b.update_date).localeCompare(String(a.update_date)));
     const latest = updates[0] || null;
@@ -23,7 +18,10 @@ function normalizePackages(rows: any[]) {
     const percent = planned > 0 ? Math.min(100, (current / planned) * 100) : 0;
     const finish = item.planned_finish ? new Date(`${item.planned_finish}T23:59:59+07:00`) : null;
     const overdue = Boolean(finish && finish.getTime() < Date.now() && percent < 100);
-    return { ...item, updates, latest, current, percent, overdue };
+    const quantityRequests = paymentRequests.filter((row:any)=>row.work_package_id===item.id && row.status!=="cancelled");
+    const claimedQuantity = quantityRequests.reduce((sum:number,row:any)=>sum+Number(row.quantity_claimed||0),0);
+    const paidQuantity = quantityRequests.filter((row:any)=>row.status==="paid").reduce((sum:number,row:any)=>sum+Number(row.quantity_claimed||0),0);
+    return { ...item, updates, latest, current, percent, overdue, claimedQuantity, paidQuantity, claimRemaining: planned - claimedQuantity, claimOver: planned > 0 && claimedQuantity > planned };
   });
 }
 
@@ -49,21 +47,20 @@ export async function getCommercialData() {
     db.from("work_packages").select("*,work_package_updates(*)").order("sort_order").order("code"),
     db.from("app_users").select("id,username,full_name,role,active").eq("active", true)
   ]);
-
-  for (const result of [contractsRes, scheduleRes, requestsRes, docsRes, eventsRes, materialsRes, costsRes, packagesRes, usersRes]) {
-    if (result.error) throw result.error;
-  }
+  for (const result of [contractsRes, scheduleRes, requestsRes, docsRes, eventsRes, materialsRes, costsRes, packagesRes, usersRes]) if (result.error) throw result.error;
 
   const documents = await Promise.all((docsRes.data || []).map(async (doc: any) => {
     const { data } = await db.storage.from(DOCUMENT_BUCKET).createSignedUrl(doc.storage_path, 60 * 30);
     return { ...doc, signedUrl: data?.signedUrl || null };
   }));
-
   const users = usersRes.data || [];
   const userName = (id?: string | null) => users.find((item: any) => item.id === id)?.full_name || null;
+  const packages = normalizePackages(packagesRes.data || [], requestsRes.data || []);
+  const packageMap = new Map(packages.map((item:any)=>[item.id,item]));
 
   const requests = (requestsRes.data || []).map((request: any) => ({
     ...request,
+    workPackage: request.work_package_id ? packageMap.get(request.work_package_id) || null : null,
     documents: documents.filter((doc: any) => doc.request_id === request.id),
     events: (eventsRes.data || []).filter((event: any) => event.request_id === request.id).map((event: any) => ({ ...event, actor_name: userName(event.actor_id) }))
   }));
@@ -72,11 +69,9 @@ export async function getCommercialData() {
     const receipts = [...(item.material_receipts || [])].sort((a: any, b: any) => String(a.receipt_date).localeCompare(String(b.receipt_date)));
     const received = receipts.reduce((sum: number, row: any) => sum + Number(row.quantity || 0), 0);
     const budget = Number(item.budget_quantity || 0);
-    const remaining = budget - received;
-    return { ...item, receipts, received, remaining, overBudget: budget > 0 && received > budget, percent: budget > 0 ? (received / budget) * 100 : 0 };
+    return { ...item, receipts, received, remaining: budget - received, overBudget: budget > 0 && received > budget, percent: budget > 0 ? (received / budget) * 100 : 0 };
   });
 
-  const packages = normalizePackages(packagesRes.data || []);
   const ownerContract = (contractsRes.data || []).find((item: any) => item.contract_kind === "owner") || null;
   const subcontractRequests = requests.filter((item: any) => item.request_type === "subcontractor");
   const totalPaid = subcontractRequests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount_paid || 0), 0);
@@ -85,21 +80,7 @@ export async function getCommercialData() {
   const materialWarnings = materials.filter((item: any) => item.overBudget || item.percent >= 90).length;
 
   return {
-    contracts: contractsRes.data || [],
-    ownerContract,
-    schedule: scheduleRes.data || [],
-    requests,
-    materials,
-    costs: costsRes.data || [],
-    packages,
-    users,
-    summary: {
-      ownerContractValue: Number(ownerContract?.after_tax_value || 0),
-      totalPaid,
-      pendingPayment,
-      totalCosts,
-      materialWarnings,
-      activeRequests: subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).length
-    }
+    contracts: contractsRes.data || [], ownerContract, schedule: scheduleRes.data || [], requests, materials, costs: costsRes.data || [], packages, users,
+    summary: { ownerContractValue: Number(ownerContract?.after_tax_value || 0), totalPaid, pendingPayment, totalCosts, materialWarnings, activeRequests: subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).length }
   };
 }
