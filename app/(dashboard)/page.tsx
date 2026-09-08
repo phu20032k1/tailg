@@ -109,7 +109,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                   <span>Công việc gần nhất</span>
                   <p>{latest?.tasks?.[0]?.description_vi || latest?.workItems?.[0]?.stage || "Chưa có công việc trong kỳ."}</p>
                 </div>
-                <Link className="team-detail-link" href={`/reports?from=${from}&to=${to}`}>Xem chi tiết <ArrowRight size={14}/></Link>
+                <Link className="team-detail-link" href={`/teams/${leader.id}?view=${mode}&date=${selectedDate}`}>Xem chi tiết <ArrowRight size={14}/></Link>
               </article>
             ))}
           </div>
