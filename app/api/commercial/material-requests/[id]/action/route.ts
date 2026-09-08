@@ -16,22 +16,17 @@ async function committed(db:any,budgetIds:string[],excludeRequestId?:string){
 }
 
 async function ensureCapacity(db:any,budget:any,quantity:number,excludeRequestId:string){
-  const own=await committed(db,[budget.id],excludeRequestId);
-  if(own+quantity>Number(budget.budget_quantity||0)+0.000001)throw new Error(`LIMIT_TEAM|${own}|${budget.budget_quantity}|${budget.unit}`);
+  const own=await committed(db,[budget.id],excludeRequestId);if(own+quantity>Number(budget.budget_quantity||0)+0.000001)throw new Error(`LIMIT_TEAM|${own}|${budget.budget_quantity}|${budget.unit}`);
   if(!budget.parent_budget_id)return;
   const {data:parent,error}=await db.from("material_budgets").select("id,budget_quantity,unit,parent_budget_id").eq("id",budget.parent_budget_id).maybeSingle();if(error)throw error;if(!parent)return;
   const {data:siblings,error:sErr}=await db.from("material_budgets").select("id").eq("parent_budget_id",parent.id).eq("active",true);if(sErr)throw sErr;
-  const stage=await committed(db,(siblings||[]).map((x:any)=>x.id),excludeRequestId);
-  if(stage+quantity>Number(parent.budget_quantity||0)+0.000001)throw new Error(`LIMIT_STAGE|${stage}|${parent.budget_quantity}|${parent.unit}`);
+  const stage=await committed(db,(siblings||[]).map((x:any)=>x.id),excludeRequestId);if(stage+quantity>Number(parent.budget_quantity||0)+0.000001)throw new Error(`LIMIT_STAGE|${stage}|${parent.budget_quantity}|${parent.unit}`);
   if(!parent.parent_budget_id)return;
   const {data:project,error:pErr}=await db.from("material_budgets").select("id,budget_quantity,unit").eq("id",parent.parent_budget_id).maybeSingle();if(pErr)throw pErr;if(!project)return;
   const {data:stages,error:stErr}=await db.from("material_budgets").select("id").eq("parent_budget_id",project.id).eq("active",true);if(stErr)throw stErr;
-  const stageIds=(stages||[]).map((x:any)=>x.id);
-  const teamRes=stageIds.length?await db.from("material_budgets").select("id").in("parent_budget_id",stageIds).eq("active",true):{data:[],error:null};if(teamRes.error)throw teamRes.error;
-  const projectCommitted=await committed(db,(teamRes.data||[]).map((x:any)=>x.id),excludeRequestId);
-  if(projectCommitted+quantity>Number(project.budget_quantity||0)+0.000001)throw new Error(`LIMIT_PROJECT|${projectCommitted}|${project.budget_quantity}|${project.unit}`);
+  const stageIds=(stages||[]).map((x:any)=>x.id);const teamRes=stageIds.length?await db.from("material_budgets").select("id").in("parent_budget_id",stageIds).eq("active",true):{data:[],error:null};if(teamRes.error)throw teamRes.error;
+  const projectCommitted=await committed(db,(teamRes.data||[]).map((x:any)=>x.id),excludeRequestId);if(projectCommitted+quantity>Number(project.budget_quantity||0)+0.000001)throw new Error(`LIMIT_PROJECT|${projectCommitted}|${project.budget_quantity}|${project.unit}`);
 }
-
 function capacityMessage(message:string){const [type,current,limit,unit]=message.split("|");const scope=type==="LIMIT_TEAM"?"đội":type==="LIMIT_STAGE"?"hạng mục":"toàn dự án";return `DỪNG: khối lượng sau xử lý sẽ vượt định mức ${scope}. Hiện đã dùng/đang chờ ${Number(current).toLocaleString("vi-VN")} ${unit}, giới hạn ${Number(limit).toLocaleString("vi-VN")} ${unit}.`;}
 
 export async function POST(request:NextRequest,context:{params:Promise<{id:string}>}){
@@ -39,11 +34,11 @@ export async function POST(request:NextRequest,context:{params:Promise<{id:strin
   try{
     const {id}=await context.params;const body=schema.parse(await request.json());const db=getSupabaseAdmin();
     const {data:row,error}=await db.from("material_requests").select("*,material_budgets(*)").eq("id",id).maybeSingle();if(error)throw error;if(!row)return NextResponse.json({error:"Không tìm thấy đề nghị vật tư."},{status:404});
-    const budget=row.material_budgets;const now=new Date().toISOString();const patch:any={updated_at:now};let quantity=Number(body.quantity??row.quantity_approved??row.quantity_requested);
+    const budget=row.material_budgets;const now=new Date().toISOString();const patch:any={updated_at:now};let quantity=Number(row.quantity_approved??row.quantity_requested);
 
     if(body.action==="commander_approve"){
       if(session.role!=="commander"||!["commander_review","returned_to_commander"].includes(row.status))return NextResponse.json({error:"Hồ sơ chưa ở bước Ban điều hành xác nhận."},{status:403});
-      await ensureCapacity(db,budget,quantity,id);patch.status="khkt_review";patch.quantity_approved=quantity;patch.commander_note=body.note||null;patch.commander_reviewed_by=session.id;patch.commander_reviewed_at=now;patch.returned_reason=null;
+      quantity=Number(row.quantity_requested);await ensureCapacity(db,budget,quantity,id);patch.status="khkt_review";patch.quantity_approved=quantity;patch.commander_note=body.note||null;patch.commander_reviewed_by=session.id;patch.commander_reviewed_at=now;patch.returned_reason=null;
     }else if(body.action==="return_team"){
       if(session.role!=="commander"||!["commander_review","returned_to_commander"].includes(row.status))return NextResponse.json({error:"Ban điều hành không thể trả hồ sơ ở trạng thái này."},{status:403});
       if(!body.note)return NextResponse.json({error:"Vui lòng ghi nội dung đội cần chỉnh lại."},{status:400});patch.status="returned_to_team";patch.returned_by=session.id;patch.returned_at=now;patch.returned_reason=body.note;
@@ -52,7 +47,7 @@ export async function POST(request:NextRequest,context:{params:Promise<{id:strin
       quantity=Number(body.quantity??row.quantity_requested);await ensureCapacity(db,budget,quantity,id);patch.status="commander_review";patch.quantity_requested=quantity;patch.quantity_approved=null;patch.team_note=body.note||row.team_note;patch.submitted_at=now;patch.returned_reason=null;patch.returned_at=null;patch.returned_by=null;
     }else if(body.action==="khkt_approve"){
       if(session.role!=="khkt"||row.status!=="khkt_review")return NextResponse.json({error:"Chỉ Phòng KTKT được duyệt hồ sơ ở bước này."},{status:403});
-      await ensureCapacity(db,budget,quantity,id);patch.status="approved";patch.khkt_note=body.note||null;patch.khkt_reviewed_by=session.id;patch.khkt_reviewed_at=now;
+      quantity=Number(row.quantity_approved??row.quantity_requested);await ensureCapacity(db,budget,quantity,id);patch.status="approved";patch.khkt_note=body.note||null;patch.khkt_reviewed_by=session.id;patch.khkt_reviewed_at=now;
     }else if(body.action==="return_commander"){
       if(session.role!=="khkt"||row.status!=="khkt_review")return NextResponse.json({error:"Chỉ Phòng KTKT được trả hồ sơ ở bước này."},{status:403});
       if(!body.note)return NextResponse.json({error:"Vui lòng ghi lý do trả lại Ban điều hành."},{status:400});patch.status="returned_to_commander";patch.returned_by=session.id;patch.returned_at=now;patch.returned_reason=body.note;
