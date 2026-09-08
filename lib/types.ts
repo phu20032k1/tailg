@@ -29,6 +29,27 @@ export type Foundation = {
   last_work_date: string | null;
 };
 
+export type ProgressItem = {
+  id: string;
+  code: string;
+  item_type: "foundation" | "column" | "slab" | "floor" | "other";
+  zone_id: string;
+  owner_id: string;
+  work_stage: string;
+  planned_start: string | null;
+  planned_finish: string | null;
+  actual_start: string | null;
+  actual_finish: string | null;
+  progress: number;
+  status: "not_started" | "in_progress" | "completed" | "paused";
+  map_x: number | null;
+  map_y: number | null;
+  note: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ReportRow = {
   id: string;
   report_date: string;
@@ -38,6 +59,9 @@ export type ReportRow = {
   issue_text: string | null;
   raw_message: string | null;
   submitted_at: string | null;
+  weather_morning: string | null;
+  weather_afternoon: string | null;
+  weather_payload: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
