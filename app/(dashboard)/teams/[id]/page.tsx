@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Camera,
   CheckCircle2,
+  CloudSun,
   HardHat,
   MapPin,
   Rows3,
@@ -15,6 +16,7 @@ import { requireCommander } from "@/lib/auth";
 import { getFoundations, getReportRange, getUsers, getZones } from "@/lib/data";
 import { formatDate, formatPercent } from "@/lib/format";
 import { PhotoGrid } from "@/components/photo-grid";
+import { PeriodFilter } from "@/components/period-filter";
 
 function mondayOf(dateText: string) {
   const date = new Date(`${dateText}T12:00:00+07:00`);
@@ -71,6 +73,11 @@ export default async function TeamDetailPage({
   const labor = latest?.labor || [];
   const equipment = latest?.equipment || [];
   const tasks = reports.flatMap((report) => report.tasks).slice(0, 12);
+  const zoneProgress = teamZones.map((zone) => {
+    const items = foundations.filter((item) => item.zone_id === zone.id);
+    const value = items.length ? items.reduce((sum, item) => sum + Number(item.progress || 0), 0) / items.length : Number(zone.baseline_progress || 0);
+    return { zone, items, value };
+  });
 
   return (
     <>
@@ -92,18 +99,13 @@ export default async function TeamDetailPage({
         </div>
       </section>
 
-      <section className="commander-period-bar team-detail-period">
-        <div className="period-tabs">
-          <Link className={mode === "day" ? "active" : ""} href={`/teams/${leader.id}?view=day&date=${selectedDate}`}>Theo ngày</Link>
-          <Link className={mode === "week" ? "active" : ""} href={`/teams/${leader.id}?view=week&date=${selectedDate}`}>Theo tuần</Link>
-        </div>
-        <form className="period-date-form" method="get">
-          <input type="hidden" name="view" value={mode} />
-          <label><CalendarDays size={17} /><span>{mode === "week" ? "Chọn ngày trong tuần" : "Ngày báo cáo"}</span><input type="date" name="date" defaultValue={selectedDate} /></label>
-          <button className="button secondary" type="submit">Xem</button>
-        </form>
-        <div className="period-caption"><strong>{mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)}</strong><span>{reports.length} báo cáo</span></div>
-      </section>
+      <PeriodFilter
+        basePath={`/teams/${leader.id}`}
+        mode={mode}
+        selectedDate={selectedDate}
+        periodTitle={mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)}
+        periodNote={`${reports.length} báo cáo`}
+      />
 
       <section className="team-detail-kpis">
         <article><HardHat size={21}/><span>{mode === "week" ? "CN bình quân" : "Công nhân"}</span><strong>{mode === "week" ? avgWorkers : Number(latest?.workers || 0)}</strong><small>{mode === "week" ? `${workerTotal} lượt trong kỳ` : "Theo báo cáo đã chọn"}</small></article>
@@ -112,7 +114,11 @@ export default async function TeamDetailPage({
         <article><CheckCircle2 size={21}/><span>Tiến độ móng</span><strong>{formatPercent(progress)}%</strong><small>Bình quân danh mục của đội</small></article>
       </section>
 
-      <section className="team-detail-grid">
+      {zoneProgress.length ? <section className="panel section-gap team-detail-panel"><div className="panel-head"><div><span className="eyebrow">TIẾN ĐỘ TỪNG HẠNG MỤC</span><h2>Phân tách theo khu vực phụ trách</h2></div></div><div className="panel-body"><div className="team-scope-progress-grid">{zoneProgress.map(({zone,items,value})=><article className="team-scope-progress-card" key={zone.id}><h3>{zone.name}</h3><p>{zone.scope_label}</p><div><span>{items.length} móng</span><b>{formatPercent(value)}%</b></div><div className="progress-track large"><i style={{width:`${Math.min(100,Math.max(0,value))}%`}}/></div></article>)}</div></div></section> : null}
+
+      {latest ? <section className="panel section-gap team-detail-panel"><div className="panel-head"><div><span className="eyebrow">THỜI TIẾT</span><h2>Điều kiện thi công</h2></div><CloudSun size={20}/></div><div className="panel-body weather-week-grid"><div className="weather-week-day"><strong>{formatDate(latest.report_date)}</strong><div><span>Buổi sáng</span><b>{latest.weather_morning || "Chưa ghi nhận"}</b></div><div><span>Buổi chiều</span><b>{latest.weather_afternoon || "Chưa ghi nhận"}</b></div></div></div></section> : null}
+
+      <section className="team-detail-grid section-gap">
         <article className="panel team-detail-panel">
           <div className="panel-head"><div><span className="eyebrow">CÔNG VIỆC</span><h2>Công việc trong kỳ</h2></div></div>
           <div className="panel-body">
