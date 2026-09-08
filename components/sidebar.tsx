@@ -20,7 +20,6 @@ import type { SessionUser } from "@/lib/types";
 
 const commanderNav = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/reports/new", label: "Nhập báo cáo", icon: ClipboardPlus },
   { href: "/reports", label: "Nhật ký 6 đội", icon: History },
   { href: "/manpower", label: "Tổng hợp nhân lực", icon: BarChart3 },
   { href: "/weekly-report", label: "Báo cáo tuần", icon: FileBarChart },
