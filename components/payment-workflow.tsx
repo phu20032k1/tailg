@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, Clock3, FileUp, LoaderCircle, RotateCcw, Send, WalletCards, X } from "lucide-react";
 import type { SessionUser } from "@/lib/types";
-import { PAYMENT_STATUS_LABELS } from "@/lib/commercial";
+import { PAYMENT_STATUS_LABELS } from "@/lib/commercial-shared";
 
 type Contract = { id: string; contract_no: string | null; counterparty: string; scope: string | null; after_tax_value: number };
 type RequestRow = any;
