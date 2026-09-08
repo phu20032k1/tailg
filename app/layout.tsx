@@ -7,6 +7,7 @@ import "./foundation-v4.css";
 import "./chat.css";
 import "./commander-dashboard.css";
 import "./input-fix.css";
+import "./photo-viewer.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
