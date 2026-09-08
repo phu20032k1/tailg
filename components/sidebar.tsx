@@ -8,6 +8,7 @@ import {
   Building2,
   ClipboardPlus,
   FileBarChart,
+  FileText,
   History,
   LayoutDashboard,
   Map,
@@ -21,6 +22,7 @@ import type { SessionUser } from "@/lib/types";
 const commanderNav = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard },
   { href: "/reports", label: "Nhật ký 6 đội", icon: History },
+  { href: "/management-report", label: "Báo cáo ngày BĐH", icon: FileText },
   { href: "/manpower", label: "Tổng hợp nhân lực", icon: BarChart3 },
   { href: "/weekly-report", label: "Báo cáo tuần", icon: FileBarChart },
   { href: "/map", label: "Mặt bằng tiến độ", icon: Map },
