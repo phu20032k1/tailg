@@ -1,0 +1,70 @@
+/* Bảo đảm các ô nhập liệu luôn nhận được bàn phím, chuột và thao tác cảm ứng. */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  touch-action: manipulation;
+  caret-color: #203242;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+.chat-popup,
+.chat-thread,
+.chat-compose {
+  pointer-events: auto !important;
+}
+
+.chat-thread {
+  min-height: 0;
+}
+
+.chat-compose {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 auto;
+}
+
+.chat-compose > div:last-child {
+  position: relative;
+  z-index: 11;
+}
+
+.chat-compose textarea {
+  position: relative;
+  z-index: 12;
+  min-height: 42px;
+  line-height: 1.45;
+  background: #fff !important;
+  color: #203242 !important;
+  opacity: 1 !important;
+  cursor: text !important;
+}
+
+.chat-compose textarea::placeholder {
+  color: #8a99a3;
+  opacity: 1;
+}
+
+.chat-compose textarea:focus {
+  border-color: #5f9ec7 !important;
+  box-shadow: 0 0 0 3px rgba(48,128,180,.10) !important;
+}
+
+@media (max-width: 720px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .chat-compose textarea {
+    font-size: 16px !important;
+  }
+}
