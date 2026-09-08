@@ -1,18 +1,10 @@
 import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { SessionUser } from "@/lib/types";
+import { PAYMENT_STATUS_LABELS } from "@/lib/commercial-shared";
 
+export { PAYMENT_STATUS_LABELS } from "@/lib/commercial-shared";
 export const DOCUMENT_BUCKET = "project-documents";
-
-export const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  draft: "Ban điều hành đang lập",
-  khkt_review: "Phòng KTKT kiểm tra",
-  director_review: "Chờ Ban Giám đốc duyệt",
-  finance_payment: "Chờ Tài chính thanh toán",
-  paid: "Đã thanh toán",
-  returned: "Đã trả lại Ban điều hành",
-  cancelled: "Đã hủy"
-};
 
 export function canSeeCommercial(user: SessionUser) {
   return ["commander", "khkt", "director", "finance"].includes(user.role);
@@ -20,6 +12,28 @@ export function canSeeCommercial(user: SessionUser) {
 
 export function canCreatePayment(user: SessionUser) {
   return user.role === "commander";
+}
+
+function normalizePackages(rows: any[]) {
+  return rows.map((item: any) => {
+    const updates = [...(item.work_package_updates || [])].sort((a: any, b: any) => String(b.update_date).localeCompare(String(a.update_date)));
+    const latest = updates[0] || null;
+    const current = latest ? Number(latest.cumulative_quantity || 0) : Number(item.current_quantity || 0);
+    const planned = Number(item.planned_quantity || 0);
+    const percent = planned > 0 ? Math.min(100, (current / planned) * 100) : 0;
+    const finish = item.planned_finish ? new Date(`${item.planned_finish}T23:59:59+07:00`) : null;
+    const overdue = Boolean(finish && finish.getTime() < Date.now() && percent < 100);
+    return { ...item, updates, latest, current, percent, overdue };
+  });
+}
+
+export async function getWorkPackages(user?: SessionUser) {
+  const db = getSupabaseAdmin();
+  let query = db.from("work_packages").select("*,work_package_updates(*)").order("sort_order").order("code");
+  if (user?.role === "leader") query = query.eq("owner_type", "team").eq("owner_name", user.fullName);
+  const { data, error } = await query;
+  if (error) throw error;
+  return normalizePackages(data || []);
 }
 
 export async function getCommercialData() {
@@ -62,20 +76,11 @@ export async function getCommercialData() {
     return { ...item, receipts, received, remaining, overBudget: budget > 0 && received > budget, percent: budget > 0 ? (received / budget) * 100 : 0 };
   });
 
-  const packages = (packagesRes.data || []).map((item: any) => {
-    const updates = [...(item.work_package_updates || [])].sort((a: any, b: any) => String(b.update_date).localeCompare(String(a.update_date)));
-    const latest = updates[0] || null;
-    const current = latest ? Number(latest.cumulative_quantity || 0) : Number(item.current_quantity || 0);
-    const planned = Number(item.planned_quantity || 0);
-    const percent = planned > 0 ? Math.min(100, (current / planned) * 100) : 0;
-    const finish = item.planned_finish ? new Date(`${item.planned_finish}T23:59:59+07:00`) : null;
-    const overdue = Boolean(finish && finish.getTime() < Date.now() && percent < 100);
-    return { ...item, updates, latest, current, percent, overdue };
-  });
-
+  const packages = normalizePackages(packagesRes.data || []);
   const ownerContract = (contractsRes.data || []).find((item: any) => item.contract_kind === "owner") || null;
-  const totalPaid = requests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount_paid || 0), 0);
-  const pendingPayment = requests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).reduce((sum: number, item: any) => sum + Number(item.amount_requested || 0), 0);
+  const subcontractRequests = requests.filter((item: any) => item.request_type === "subcontractor");
+  const totalPaid = subcontractRequests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount_paid || 0), 0);
+  const pendingPayment = subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).reduce((sum: number, item: any) => sum + Number(item.amount_requested || 0), 0);
   const totalCosts = (costsRes.data || []).reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const materialWarnings = materials.filter((item: any) => item.overBudget || item.percent >= 90).length;
 
@@ -94,7 +99,7 @@ export async function getCommercialData() {
       pendingPayment,
       totalCosts,
       materialWarnings,
-      activeRequests: requests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).length
+      activeRequests: subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).length
     }
   };
 }
