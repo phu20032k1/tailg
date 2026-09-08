@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { readSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { getReportRange, getUsers } from "@/lib/data";
+import { teamRank } from "@/lib/project-order";
 
 function dateList(from: string, to: string) {
   const dates: string[] = [];
@@ -29,10 +30,12 @@ export async function GET(request: NextRequest) {
   const from = params.get("from") || new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(fallbackFrom);
   const dates = dateList(from, to);
   const [reports, users] = await Promise.all([getReportRange(session, from, to), getUsers()]);
-  const leaders = users.filter((item) => item.role === "leader" && (session.role === "commander" || item.id === session.id));
+  const leaders = users
+    .filter((item) => item.role === "leader" && (session.role === "commander" || item.id === session.id))
+    .sort((a, b) => teamRank(a.full_name) - teamRank(b.full_name));
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "TAILG Site Control";
+  workbook.creator = "TAILG";
   const sheet = workbook.addWorksheet("Tổng hợp nhân lực", { views: [{ state: "frozen", xSplit: 2, ySplit: 3 }] });
 
   sheet.mergeCells(1, 1, 1, 2 + dates.length);
