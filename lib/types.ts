@@ -60,7 +60,9 @@ export type ReportRow = {
   raw_message: string | null;
   submitted_at: string | null;
   weather_morning: string | null;
+  weather_noon: string | null;
   weather_afternoon: string | null;
+  weather_evening: string | null;
   weather_payload: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
