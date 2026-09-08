@@ -6,6 +6,7 @@ export const MATERIAL_REQUEST_STATUS: Record<string,string> = {
   commander_review: "Chờ Ban điều hành xác nhận",
   khkt_review: "Chờ Phòng KTKT kiểm tra",
   approved: "Đã được KTKT duyệt",
+  received: "Đã nhập thực tế",
   returned_to_team: "Ban trả lại đội",
   returned_to_commander: "KTKT trả lại Ban",
   cancelled: "Đã hủy"
@@ -89,7 +90,7 @@ export async function getMaterialManagementData(user: SessionUser) {
     summary:{
       budgets:materials.filter((row:any)=>row.allocation_level==="team").length,
       pending:materialRequests.filter((row:any)=>["commander_review","khkt_review","returned_to_commander"].includes(row.status)).length,
-      approved:materialRequests.filter((row:any)=>row.status==="approved").length,
+      approved:materialRequests.filter((row:any)=>["approved","received"].includes(row.status)).length,
       warnings:materials.filter((row:any)=>row.percent>=90||row.overBudget||row.allocationRemaining<0).length
     }
   };
