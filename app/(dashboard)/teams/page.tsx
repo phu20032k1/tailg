@@ -1,4 +1,5 @@
-import { CheckCircle2, CircleDashed, HardHat, Rows3, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, CircleDashed, HardHat, Rows3, Users } from "lucide-react";
 import { requireCommander } from "@/lib/auth";
 import { getTeamSummary } from "@/lib/data";
 import { formatPercent, initials } from "@/lib/format";
@@ -19,6 +20,7 @@ export default async function TeamsPage() {
           <div className="scope-chips">{team.zones.map((zone) => <span key={zone.id}>{zone.scope_label}</span>)}</div>
           <div className="team-metrics"><div><HardHat size={17} /><strong>{team.workers}</strong><span>công nhân</span></div><div><Users size={17} /><strong>{team.technicalStaff}</strong><span>kỹ thuật</span></div><div><Rows3 size={17} /><strong>{team.foundationCount}</strong><span>móng</span></div></div>
           <div className="team-progress-row"><span>Tiến độ móng bình quân</span><strong>{formatPercent(team.progress)}%</strong></div><div className="progress-track large"><i style={{ width: `${Math.min(100, team.progress)}%` }} /></div>
+          <Link className="team-detail-link" href={`/teams/${team.id}`}>Xem chi tiết đội <ArrowRight size={14}/></Link>
         </article>)}
       </section>
     </>
