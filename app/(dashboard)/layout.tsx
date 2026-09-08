@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
 import { AppHeader } from "@/components/app-header";
 import { ChatPopup } from "@/components/chat-popup";
+import { NavigationLoading } from "@/components/navigation-loading";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -13,6 +15,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="page-shell">{children}</div>
       </main>
       <ChatPopup user={user} />
+      <Suspense fallback={null}>
+        <NavigationLoading />
+      </Suspense>
     </div>
   );
 }
