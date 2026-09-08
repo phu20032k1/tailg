@@ -32,28 +32,30 @@ export async function GET(request: NextRequest) {
   workbook.creator = "TAILG - Ban điều hành";
   workbook.created = new Date();
 
-  const summary = workbook.addWorksheet("Tổng hợp ngày", { views: [{ state: "frozen", ySplit: 6 }] });
-  summary.mergeCells("A1:J1");
+  const summary = workbook.addWorksheet("Tổng hợp ngày", { views: [{ state: "frozen", ySplit: 8 }] });
+  summary.mergeCells("A1:K1");
   summary.getCell("A1").value = `BÁO CÁO TỔNG HỢP THI CÔNG NGÀY ${formatDate(date)}`;
   summary.getCell("A1").font = { bold: true, size: 16 };
   summary.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
   summary.getRow(1).height = 28;
-  summary.mergeCells("A2:J2");
+  summary.mergeCells("A2:K2");
   summary.getCell("A2").value = "Dự án: Nhà máy TAILG Việt Nam - Ban điều hành dự án";
   summary.getCell("A2").alignment = { horizontal: "center" };
 
-  summary.getRow(4).values = ["Đội báo cáo", `${data.summary.teamsReported}/6`, "Công nhân", data.summary.totalWorkers, "Kỹ thuật", data.summary.totalTechnical, "Tổng nhân lực", data.summary.totalPeople, "Ảnh", data.summary.totalPhotos];
-  summary.getRow(5).values = ["Thời tiết sáng", data.summary.weatherMorning, "Thời tiết chiều", data.summary.weatherAfternoon, "Công việc", data.summary.totalTasks, "Cập nhật móng", data.summary.totalFoundationUpdates, "Thiết bị", data.summary.totalEquipment];
-  for (const rowNumber of [4, 5]) {
+  summary.getRow(4).values = ["Đội báo cáo", `${data.summary.teamsReported}/6`, "Công nhân", data.summary.totalWorkers, "Kỹ thuật", data.summary.totalTechnical, "Tổng nhân lực", data.summary.totalPeople, "Ảnh", data.summary.totalPhotos, ""];
+  summary.getRow(5).values = ["Thời tiết sáng", data.summary.weatherMorning, "Thời tiết trưa", data.summary.weatherNoon, "Thời tiết chiều", data.summary.weatherAfternoon, "Thời tiết tối", data.summary.weatherEvening, "Công việc", data.summary.totalTasks, ""];
+  summary.getRow(6).values = ["Cập nhật móng", data.summary.totalFoundationUpdates, "Thiết bị", data.summary.totalEquipment, "", "", "", "", "", "", ""];
+  for (const rowNumber of [4, 5, 6]) {
     summary.getRow(rowNumber).font = { bold: true };
     summary.getRow(rowNumber).eachCell((cell, col) => { if (col % 2 === 1) cell.fill = sectionFill; });
   }
 
-  summary.getRow(7).values = ["STT", "Đội trưởng", "Phạm vi", "Trạng thái", "Công nhân", "Kỹ thuật", "Tổng NL", "Công việc", "Ảnh", "Vướng mắc"];
-  summary.getRow(7).font = { bold: true };
-  summary.getRow(7).fill = headerFill;
-  let row = 8;
+  summary.getRow(8).values = ["STT", "Đội trưởng", "Phạm vi", "Trạng thái", "Công nhân", "Kỹ thuật", "Tổng NL", "Số CV", "Nội dung công việc", "Ảnh", "Vướng mắc"];
+  summary.getRow(8).font = { bold: true };
+  summary.getRow(8).fill = headerFill;
+  let row = 9;
   for (const team of data.teamRows) {
+    const workText = team.tasks.map((task, index) => `${index + 1}. ${task.area_label || "Công trường"}: ${task.description_vi}`).join("\n");
     summary.getRow(row).values = [
       team.stt,
       team.leader.full_name,
@@ -63,15 +65,35 @@ export async function GET(request: NextRequest) {
       team.technical,
       team.totalPeople,
       team.tasks.length,
+      workText,
       team.photos.length,
       team.issueText || ""
     ];
     row += 1;
   }
   summary.columns = [
-    { width: 7 }, { width: 23 }, { width: 35 }, { width: 16 }, { width: 12 }, { width: 11 }, { width: 12 }, { width: 12 }, { width: 9 }, { width: 35 }
+    { width: 7 }, { width: 23 }, { width: 32 }, { width: 16 }, { width: 12 }, { width: 11 }, { width: 12 }, { width: 9 }, { width: 58 }, { width: 9 }, { width: 35 }
   ];
   applyTableStyle(summary);
+
+  const workSheet = workbook.addWorksheet("Tổng hợp công việc", { views: [{ state: "frozen", ySplit: 4 }] });
+  workSheet.mergeCells("A1:G1");
+  workSheet.getCell("A1").value = `TỔNG HỢP CÔNG VIỆC 6 ĐỘI - ${formatDate(date)}`;
+  workSheet.getCell("A1").font = { bold: true, size: 15 };
+  workSheet.getCell("A1").alignment = { horizontal: "center" };
+  workSheet.getRow(3).values = ["STT", "Đội trưởng", "Khu vực", "Loại công việc", "Nội dung tiếng Việt", "Nội dung tiếng Trung", "Ngày báo cáo"];
+  workSheet.getRow(3).font = { bold: true };
+  workSheet.getRow(3).fill = headerFill;
+  let workRow = 4;
+  data.workSummary.forEach((task, index) => {
+    workSheet.getRow(workRow).values = [index + 1, task.team, task.area, task.kind === "main" ? "Công việc chính" : "Công việc khác", task.descriptionVi, task.descriptionZh || "", formatDate(date)];
+    workRow += 1;
+  });
+  if (!data.workSummary.length) {
+    workSheet.getRow(workRow).values = ["", "", "", "", "Chưa có công việc được nhập trong ngày."];
+  }
+  workSheet.columns = [{ width: 7 }, { width: 24 }, { width: 26 }, { width: 18 }, { width: 62 }, { width: 52 }, { width: 15 }];
+  applyTableStyle(workSheet);
 
   const detail = workbook.addWorksheet("Chi tiết từng đội", { views: [{ state: "frozen", ySplit: 2 }] });
   detail.mergeCells("A1:H1");
@@ -91,7 +113,9 @@ export async function GET(request: NextRequest) {
 
     detail.getRow(cursor).values = ["Phạm vi", team.zoneLabel || "Chưa gán khu vực", "Công nhân", team.workers, "Kỹ thuật", team.technical, "Tổng nhân lực", team.totalPeople];
     cursor += 1;
-    detail.getRow(cursor).values = ["Thời tiết sáng", team.weatherMorning || "Chưa ghi nhận", "Thời tiết chiều", team.weatherAfternoon || "Chưa ghi nhận", "Móng phụ trách", team.foundationCount, "Móng hoàn thành", team.completedFoundations];
+    detail.getRow(cursor).values = ["Thời tiết sáng", team.weatherMorning || "Chưa ghi nhận", "Thời tiết trưa", team.weatherNoon || "Chưa ghi nhận", "Thời tiết chiều", team.weatherAfternoon || "Chưa ghi nhận", "Thời tiết tối", team.weatherEvening || "Chưa ghi nhận"];
+    cursor += 1;
+    detail.getRow(cursor).values = ["Móng phụ trách", team.foundationCount, "Móng hoàn thành", team.completedFoundations, "", "", "", ""];
     cursor += 1;
 
     if (!team.reported) {
