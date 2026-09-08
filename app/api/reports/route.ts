@@ -19,6 +19,13 @@ export async function POST(request:NextRequest){
   if(session.role!=="leader")return NextResponse.json({ok:false,error:"Chỉ đội trưởng mới được nhập báo cáo hằng ngày."},{status:403});
   try{
     const body=reportSchema.parse(await request.json()); const leaderId=session.id; const db=getSupabaseAdmin();
+
+    const {data:existing,error:existingError}=await db.from("daily_reports").select("id").eq("leader_id",leaderId).eq("report_date",body.reportDate).maybeSingle();
+    if(existingError)throw existingError;
+    if(existing){
+      return NextResponse.json({ok:false,code:"REPORT_EXISTS",existingReportId:existing.id,error:"Ngày này đã có báo cáo. Hãy mở báo cáo cũ để sửa; hệ thống sẽ lưu người sửa và thời gian sửa."},{status:409});
+    }
+
     let selectedFoundations:any[]=[];
     if(body.foundationUpdates.length){
       const ids=[...new Set(body.foundationUpdates.map(i=>i.foundationId))]; const {data,error}=await db.from("foundations").select("id,code,zone_id,owner_id,first_work_date").in("id",ids); if(error)throw error;
@@ -28,9 +35,10 @@ export async function POST(request:NextRequest){
     if(error){console.error("save_daily_report_v3:",error); const message=error.message||""; if(message.includes("INVALID_LEADER"))return NextResponse.json({ok:false,error:"Tài khoản đội trưởng không hợp lệ."},{status:400}); return NextResponse.json({ok:false,error:"Không lưu được báo cáo."},{status:500});}
     const reportId=(data as any)?.report_id;
     if(reportId){
-      const {error:weatherError}=await db.from("daily_reports").update({weather_morning:body.weatherMorning||null,weather_noon:body.weatherNoon||null,weather_afternoon:body.weatherAfternoon||null,weather_evening:body.weatherEvening||null,weather_payload:{morning:body.weatherMorning||null,noon:body.weatherNoon||null,afternoon:body.weatherAfternoon||null,evening:body.weatherEvening||null},updated_at:new Date().toISOString()}).eq("id",reportId).eq("leader_id",leaderId); if(weatherError)throw weatherError;
+      const now=new Date().toISOString();
+      const {error:weatherError}=await db.from("daily_reports").update({weather_morning:body.weatherMorning||null,weather_noon:body.weatherNoon||null,weather_afternoon:body.weatherAfternoon||null,weather_evening:body.weatherEvening||null,weather_payload:{morning:body.weatherMorning||null,noon:body.weatherNoon||null,afternoon:body.weatherAfternoon||null,evening:body.weatherEvening||null},updated_at:now}).eq("id",reportId).eq("leader_id",leaderId); if(weatherError)throw weatherError;
       const {error:deleteError}=await db.from("work_items").delete().eq("report_id",reportId); if(deleteError)throw deleteError;
-      if(body.foundationUpdates.length){const foundationMap=new Map(selectedFoundations.map(f=>[f.id,f])); const workRows=body.foundationUpdates.map(item=>{const f=foundationMap.get(item.foundationId)!; return {report_id:reportId,zone_id:f.zone_id,stage:item.stage,quantity:1,unit:"móng",progress:item.progress,foundation_codes:[f.code],note:null};}); const {error:workError}=await db.from("work_items").insert(workRows); if(workError)throw workError; for(const item of body.foundationUpdates){const f=foundationMap.get(item.foundationId)!; const status=item.progress>=100?"completed":item.progress>0?"in_progress":"not_started"; const {error:updateError}=await db.from("foundations").update({current_stage:item.stage,progress:item.progress,status,first_work_date:f.first_work_date||body.reportDate,last_work_date:body.reportDate,updated_at:new Date().toISOString()}).eq("id",item.foundationId).eq("owner_id",leaderId); if(updateError)throw updateError;}}
+      if(body.foundationUpdates.length){const foundationMap=new Map(selectedFoundations.map(f=>[f.id,f])); const workRows=body.foundationUpdates.map(item=>{const f=foundationMap.get(item.foundationId)!; return {report_id:reportId,zone_id:f.zone_id,stage:item.stage,quantity:1,unit:"móng",progress:item.progress,foundation_codes:[f.code],note:null};}); const {error:workError}=await db.from("work_items").insert(workRows); if(workError)throw workError; for(const item of body.foundationUpdates){const f=foundationMap.get(item.foundationId)!; const status=item.progress>=100?"completed":item.progress>0?"in_progress":"not_started"; const {error:updateError}=await db.from("foundations").update({current_stage:item.stage,progress:item.progress,status,first_work_date:f.first_work_date||body.reportDate,last_work_date:body.reportDate,updated_at:now}).eq("id",item.foundationId).eq("owner_id",leaderId); if(updateError)throw updateError;}}
     }
     return NextResponse.json({ok:true,result:data},{status:201});
   }catch(error){if(error instanceof z.ZodError)return NextResponse.json({ok:false,error:"Dữ liệu báo cáo chưa hợp lệ.",details:error.issues},{status:400}); console.error(error); return NextResponse.json({ok:false,error:"Chưa thể lưu báo cáo lúc này."},{status:500});}
