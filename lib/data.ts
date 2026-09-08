@@ -1,10 +1,12 @@
 import "server-only";
 import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase/admin";
+import { teamRank } from "@/lib/project-order";
 import type {
   EquipmentEntryRow,
   Foundation,
   LaborEntryRow,
   PhotoRow,
+  ProgressItem,
   ReportRow,
   ReportTaskRow,
   SessionUser,
@@ -21,9 +23,16 @@ type UserRow = {
 
 export async function getUsers() {
   const db = getSupabaseAdmin();
-  const { data, error } = await db.from("app_users").select("id,username,full_name,role").eq("active", true).order("full_name");
+  const { data, error } = await db.from("app_users").select("id,username,full_name,role").eq("active", true);
   if (error) throw error;
-  return (data || []) as UserRow[];
+  return ((data || []) as UserRow[]).sort((a, b) => {
+    if (a.role !== b.role) return a.role === "commander" ? -1 : 1;
+    if (a.role === "leader" && b.role === "leader") {
+      const rank = teamRank(a.full_name) - teamRank(b.full_name);
+      if (rank !== 0) return rank;
+    }
+    return a.full_name.localeCompare(b.full_name, "vi");
+  });
 }
 
 export async function getZones() {
@@ -49,6 +58,33 @@ export async function getFoundations(user: SessionUser) {
   return (data || []) as Foundation[];
 }
 
+export async function getProgressItems(user: SessionUser, stage?: string) {
+  const db = getSupabaseAdmin();
+  let query = db.from("progress_items")
+    .select("id,code,item_type,zone_id,owner_id,work_stage,planned_start,planned_finish,actual_start,actual_finish,progress,status,map_x,map_y,note,sort_order,created_at,updated_at")
+    .order("sort_order")
+    .order("code");
+  if (user.role === "leader") query = query.eq("owner_id", user.id);
+  if (stage) query = query.eq("work_stage", stage);
+  const { data, error } = await query;
+  if (error) {
+    if (error.message?.includes("progress_items")) return [] as ProgressItem[];
+    throw error;
+  }
+  return (data || []) as ProgressItem[];
+}
+
+export async function getProgressMap(stage: string) {
+  const db = getSupabaseAdmin();
+  const { data, error } = await db.from("progress_maps").select("id,work_stage,title,storage_path,created_at,updated_at").eq("work_stage", stage).maybeSingle();
+  if (error) {
+    if (error.message?.includes("progress_maps")) return null;
+    throw error;
+  }
+  if (!data) return null;
+  return { ...data, signedUrl: await signedPhotoUrl(data.storage_path, 60 * 60) };
+}
+
 export async function getFormMeta(user: SessionUser) {
   const [zones, users, foundations] = await Promise.all([getZones(), getUsers(), getFoundations(user)]);
   return {
@@ -67,17 +103,28 @@ async function listReports(user: SessionUser, limit = 50, from?: string, to?: st
     if (to) next = next.lte("report_date", to);
     return next;
   }
-  let query: any = db.from("daily_reports").select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,created_at,updated_at").order("report_date", { ascending: false }).order("updated_at", { ascending: false }).limit(limit);
+  let query: any = db.from("daily_reports")
+    .select("id,report_date,leader_id,workers,technical_staff,issue_text,raw_message,submitted_at,weather_morning,weather_afternoon,weather_payload,created_at,updated_at")
+    .order("report_date", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
   query = applyFilters(query);
   const primary = await query;
   if (!primary.error) return (primary.data || []) as ReportRow[];
-  const missingV3Columns = primary.error.message?.includes("raw_message") || primary.error.message?.includes("submitted_at") || primary.error.code === "42703";
-  if (!missingV3Columns) throw primary.error;
+  const missingExtendedColumns = primary.error.message?.includes("raw_message") || primary.error.message?.includes("submitted_at") || primary.error.message?.includes("weather_morning") || primary.error.code === "42703";
+  if (!missingExtendedColumns) throw primary.error;
   let fallback: any = db.from("daily_reports").select("id,report_date,leader_id,workers,technical_staff,issue_text,created_at,updated_at").order("report_date", { ascending: false }).order("updated_at", { ascending: false }).limit(limit);
   fallback = applyFilters(fallback);
   const legacy = await fallback;
   if (legacy.error) throw legacy.error;
-  return (legacy.data || []).map((report: any) => ({ ...report, raw_message: null, submitted_at: report.updated_at || report.created_at })) as ReportRow[];
+  return (legacy.data || []).map((report: any) => ({
+    ...report,
+    raw_message: null,
+    submitted_at: report.updated_at || report.created_at,
+    weather_morning: null,
+    weather_afternoon: null,
+    weather_payload: null
+  })) as ReportRow[];
 }
 
 async function listWorkItems(reportIds: string[]) {
@@ -140,7 +187,7 @@ async function enrichReports(reports: ReportRow[]) {
   const [items, labor, equipment, tasks, photos] = await Promise.all([listWorkItems(reportIds), listLabor(reportIds), listEquipment(reportIds), listTasks(reportIds), listPhotos(reportIds)]);
   const userMap = new Map(users.map((item) => [item.id, item]));
   const zoneMap = new Map(zones.map((zone) => [zone.id, zone]));
-  const photoEntries = await Promise.all(photos.slice(0, 120).map(async (photo) => ({ ...photo, signedUrl: await signedPhotoUrl(photo.storage_path) })));
+  const photoEntries = await Promise.all(photos.slice(0, 160).map(async (photo) => ({ ...photo, signedUrl: await signedPhotoUrl(photo.storage_path) })));
   return reports.map((report) => ({
     ...report,
     leader: userMap.get(report.leader_id),
