@@ -3,10 +3,11 @@ import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
-import type { SessionUser } from "@/lib/types";
+import type { Role, SessionUser } from "@/lib/types";
 
 export const SESSION_COOKIE = "tailg_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const ALLOWED_ROLES = new Set<Role>(["commander", "leader", "khkt", "director", "finance"]);
 
 function clean(raw: string | undefined) {
   let value = (raw || "").trim();
@@ -20,42 +21,24 @@ function clean(raw: string | undefined) {
 export function getSessionSecretSource(): "SESSION_SECRET" | "SUPABASE_SECRET_KEY" | "missing" {
   const explicit = clean(process.env.SESSION_SECRET);
   if (explicit.length >= 32) return "SESSION_SECRET";
-
-  const supabaseSecret = clean(
-    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  const supabaseSecret = clean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (supabaseSecret.length >= 32) return "SUPABASE_SECRET_KEY";
-
   return "missing";
 }
 
 function secret() {
   const explicit = clean(process.env.SESSION_SECRET);
-  if (explicit.length >= 32) {
-    return new TextEncoder().encode(explicit);
-  }
-
-  const supabaseSecret = clean(
-    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  if (explicit.length >= 32) return new TextEncoder().encode(explicit);
+  const supabaseSecret = clean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (supabaseSecret.length >= 32) {
-    const derived = createHash("sha256")
-      .update(`tailg-session-v1:${supabaseSecret}`)
-      .digest();
+    const derived = createHash("sha256").update(`tailg-session-v1:${supabaseSecret}`).digest();
     return new Uint8Array(derived);
   }
-
-  throw new Error(
-    "Missing session signing secret. Set SESSION_SECRET or SUPABASE_SECRET_KEY."
-  );
+  throw new Error("Missing session signing secret. Set SESSION_SECRET or SUPABASE_SECRET_KEY.");
 }
 
 export async function createSessionToken(user: SessionUser) {
-  return new SignJWT({
-    username: user.username,
-    fullName: user.fullName,
-    role: user.role
-  })
+  return new SignJWT({ username: user.username, fullName: user.fullName, role: user.role })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
     .setIssuedAt()
@@ -67,21 +50,9 @@ export async function readSessionToken(token?: string | null): Promise<SessionUs
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    if (
-      !payload.sub ||
-      typeof payload.username !== "string" ||
-      typeof payload.fullName !== "string" ||
-      (payload.role !== "commander" && payload.role !== "leader")
-    ) {
-      return null;
-    }
-
-    return {
-      id: payload.sub,
-      username: payload.username,
-      fullName: payload.fullName,
-      role: payload.role
-    };
+    if (!payload.sub || typeof payload.username !== "string" || typeof payload.fullName !== "string" || typeof payload.role !== "string") return null;
+    if (!ALLOWED_ROLES.has(payload.role as Role)) return null;
+    return { id: payload.sub, username: payload.username, fullName: payload.fullName, role: payload.role as Role };
   } catch {
     return null;
   }
@@ -101,6 +72,18 @@ export async function requireUser() {
 export async function requireCommander() {
   const user = await requireUser();
   if (user.role !== "commander") redirect("/");
+  return user;
+}
+
+export async function requireCommercialUser() {
+  const user = await requireUser();
+  if (!["commander", "khkt", "director", "finance"].includes(user.role)) redirect("/");
+  return user;
+}
+
+export async function requireRole(roles: Role[]) {
+  const user = await requireUser();
+  if (!roles.includes(user.role)) redirect("/");
   return user;
 }
 
