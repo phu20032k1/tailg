@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Download, FileBarChart, Image as ImageIcon } from "lucide-react";
+import { CloudSun, Download, FileBarChart, Image as ImageIcon } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getReportRange, signedPhotoUrl } from "@/lib/data";
 import { formatDate } from "@/lib/format";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { areaRank, teamRank } from "@/lib/project-order";
 import { WeeklyAssetForm } from "@/components/weekly-asset-form";
 import { PhotoGrid } from "@/components/photo-grid";
 
@@ -42,13 +43,22 @@ export default async function WeeklyReportPage({ searchParams }: { searchParams:
   const totalWorkers = reports.reduce((sum, report) => sum + report.workers, 0);
   const totalTechnical = reports.reduce((sum, report) => sum + report.technical_staff, 0);
   const uniqueTeams = new Set(reports.map((report) => report.leader_id)).size;
-  const tasks = reports.flatMap((report) => report.tasks.map((task) => ({ ...task, reportDate: report.report_date, leader: report.leader })));
+  const tasks = reports
+    .flatMap((report) => report.tasks.map((task) => ({ ...task, reportDate: report.report_date, leader: report.leader })))
+    .sort((a, b) => areaRank(a.area_label) - areaRank(b.area_label) || teamRank(a.leader?.full_name) - teamRank(b.leader?.full_name) || a.reportDate.localeCompare(b.reportDate));
   const photos = reports.flatMap((report) => report.photos).filter((photo) => photo.photo_type === "work").slice(0, 18);
+  const reportDates = [...new Set(reports.map((report) => report.report_date))].sort();
+  const weatherDays = reportDates.map((date) => {
+    const day = reports.filter((report) => report.report_date === date);
+    const morning = [...new Set(day.map((report) => report.weather_morning).filter(Boolean))].join(" / ") || "Chưa ghi nhận";
+    const afternoon = [...new Set(day.map((report) => report.weather_afternoon).filter(Boolean))].join(" / ") || "Chưa ghi nhận";
+    return { date, morning, afternoon };
+  });
 
   return (
     <>
       <section className="page-title-row">
-        <div><span className="eyebrow">TỔNG HỢP TUẦN</span><h1>Báo cáo tuần</h1><p>Tổng hợp công việc, nhân lực, ảnh hiện trường và mặt bằng trong khoảng thời gian đã chọn.</p></div>
+        <div><span className="eyebrow">TỔNG HỢP TUẦN</span><h1>Báo cáo tuần</h1><p>Tổng hợp công việc, nhân lực, thời tiết, ảnh hiện trường và mặt bằng trong khoảng thời gian đã chọn.</p></div>
         <div className="page-title-icon"><FileBarChart size={25} /></div>
       </section>
 
@@ -72,8 +82,15 @@ export default async function WeeklyReportPage({ searchParams }: { searchParams:
         </div>
       </section>
 
+      <section className="panel section-gap lazy-section">
+        <div className="panel-head"><div><span className="eyebrow">THỜI TIẾT TRONG TUẦN</span><h2>Sáng / chiều từng ngày</h2></div><CloudSun size={20}/></div>
+        <div className="panel-body">
+          {weatherDays.length ? <div className="weather-week-grid">{weatherDays.map((item) => <div className="weather-week-day" key={item.date}><strong>{formatDate(item.date)}</strong><div><span>Buổi sáng</span><b>{item.morning}</b></div><div><span>Buổi chiều</span><b>{item.afternoon}</b></div></div>)}</div> : <div className="empty-state">Chưa có dữ liệu thời tiết trong tuần.</div>}
+        </div>
+      </section>
+
       <section className="dashboard-grid section-gap">
-        <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">CÔNG VIỆC TRONG TUẦN</span><h2>Công việc chính</h2></div></div><div className="panel-body weekly-task-list">{tasks.filter((task) => task.kind === "main").slice(0, 30).map((task) => <div key={task.id}><strong>{task.area_label || "Công trường"}</strong><span>{task.description_vi}</span><small>{task.leader?.full_name} · {formatDate(task.reportDate)}</small></div>)}{!tasks.length ? <div className="empty-state">Chưa có dữ liệu trong khoảng đã chọn.</div> : null}</div></article>
+        <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">CÔNG VIỆC TRONG TUẦN</span><h2>Xưởng 1 → Xưởng 2 → Xưởng 3 → hạng mục phụ trợ</h2></div></div><div className="panel-body weekly-task-list">{tasks.filter((task) => task.kind === "main").slice(0, 40).map((task) => <div key={task.id}><strong>{task.area_label || "Công trường"}</strong><span>{task.description_vi}</span><small>{task.leader?.full_name} · {formatDate(task.reportDate)}</small></div>)}{!tasks.length ? <div className="empty-state">Chưa có dữ liệu trong khoảng đã chọn.</div> : null}</div></article>
         <article className="panel lazy-section"><div className="panel-head"><div><span className="eyebrow">MẶT BẰNG TIẾN ĐỘ</span><h2>Tài liệu báo cáo</h2></div><ImageIcon size={19} /></div><div className="panel-body"><WeeklyAssetForm from={from} to={to} />{assets.length ? <div className="asset-list">{assets.map((asset) => <a key={asset.id} href={asset.signedUrl || "#"} target="_blank" rel="noreferrer"><strong>{asset.title}</strong><span>{asset.source_pdf_path ? "Có tài liệu gốc" : "Ảnh mặt bằng"}</span></a>)}</div> : null}</div></article>
       </section>
 
