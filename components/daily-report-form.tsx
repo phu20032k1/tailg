@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, ClipboardPaste, CloudSun, Loader2, Plus, Trash2, UploadCloud, X } from "lucide-react";
+import { Camera, CheckCircle2, ClipboardPaste, CloudSun, Languages, Loader2, Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { parseDailyReportMessage } from "@/lib/report-message-parser";
 import type { SessionUser } from "@/lib/types";
 
@@ -10,7 +10,7 @@ type Leader = { id: string; full_name: string; username: string; role: "commande
 type FoundationOption = { id:string; code:string; zone_id:string; owner_id:string; current_stage:string; progress:number; status:string };
 type LaborEntry = { categoryCode:string; label:string; crewName:string; headcount:number; countsAsWorker:boolean };
 type EquipmentEntry = { equipmentName:string; quantity:number; unit:string };
-type TaskEntry = { kind:"main"|"other"; areaLabel:string; descriptionVi:string; descriptionZh:string };
+type TaskEntry = { kind:"main"|"other"; areaLabel:string; descriptionVi:string; descriptionZh:string; translationState?:"idle"|"loading"|"done"|"error" };
 type FoundationUpdate = { foundationId:string; stage:string; progress:number };
 type Notice = { type:"ok"|"error"; title:string; text?:string };
 
@@ -31,11 +31,13 @@ function createInitialLabor():LaborEntry[]{ return [
   {categoryCode:"formwork",label:"Cốp pha / ván khuôn",crewName:"",headcount:0,countsAsWorker:true}
 ]; }
 function createInitialEquipment():EquipmentEntry[]{ return [{equipmentName:"Máy xúc",quantity:0,unit:"máy"}]; }
-function createInitialTasks():TaskEntry[]{ return [{kind:"main",areaLabel:"",descriptionVi:"",descriptionZh:""}]; }
+function createInitialTasks():TaskEntry[]{ return [{kind:"main",areaLabel:"",descriptionVi:"",descriptionZh:"",translationState:"idle"}]; }
 function isImageFile(file:File){ return file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name); }
+function fileKey(file:File){ return `${file.name}:${file.size}:${file.lastModified}`; }
 
 export function DailyReportForm({ user, leaders, foundations }: { user:SessionUser; leaders:Leader[]; foundations:FoundationOption[] }) {
   const router=useRouter();
+  const translationTimers=useRef<Record<number,number>>({});
   const [leaderId,setLeaderId]=useState(user.role==="leader"?user.id:leaders[0]?.id||"");
   const [reportDate,setReportDate]=useState(today());
   const [weatherMorning,setWeatherMorning]=useState("Nắng");
@@ -53,6 +55,7 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
 
   useEffect(()=>{ if(!notice)return; const timer=window.setTimeout(()=>setNotice(null),notice.type==="ok"?2800:5000); return()=>window.clearTimeout(timer); },[notice]);
   useEffect(()=>{ setFoundationUpdates([]); },[leaderId]);
+  useEffect(()=>()=>{Object.values(translationTimers.current).forEach(timer=>window.clearTimeout(timer));},[]);
 
   const photoPreviews=useMemo(()=>files.map((file)=>({file,url:URL.createObjectURL(file)})),[files]);
   useEffect(()=>()=>{photoPreviews.forEach((item)=>URL.revokeObjectURL(item.url));},[photoPreviews]);
@@ -60,6 +63,34 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
   const directWorkers=useMemo(()=>labor.reduce((sum,item)=>sum+(item.countsAsWorker?Number(item.headcount||0):0),0),[labor]);
   const technical=useMemo(()=>labor.filter(i=>i.categoryCode==="technical").reduce((sum,i)=>sum+Number(i.headcount||0),0),[labor]);
   const availableFoundations=useMemo(()=>foundations.filter(f=>f.owner_id===leaderId),[foundations,leaderId]);
+
+  async function translateTask(index:number,text:string){
+    const source=text.trim();
+    if(source.length<2){
+      setTasks(items=>items.map((item,i)=>i===index?{...item,descriptionZh:"",translationState:"idle"}:item));
+      return;
+    }
+    setTasks(items=>items.map((item,i)=>i===index?{...item,translationState:"loading"}:item));
+    try{
+      const response=await fetch("/api/translate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text:source})});
+      const result=await response.json();
+      if(!response.ok||!result.translatedText)throw new Error(result.error||"translate_failed");
+      setTasks(items=>items.map((item,i)=>i===index&&item.descriptionVi.trim()===source?{...item,descriptionZh:String(result.translatedText),translationState:"done"}:item));
+    }catch{
+      setTasks(items=>items.map((item,i)=>i===index&&item.descriptionVi.trim()===source?{...item,translationState:"error"}:item));
+    }
+  }
+
+  function scheduleTranslation(index:number,text:string){
+    const existing=translationTimers.current[index];
+    if(existing)window.clearTimeout(existing);
+    if(text.trim().length<2){
+      setTasks(items=>items.map((item,i)=>i===index?{...item,descriptionZh:"",translationState:"idle"}:item));
+      return;
+    }
+    setTasks(items=>items.map((item,i)=>i===index?{...item,translationState:"loading"}:item));
+    translationTimers.current[index]=window.setTimeout(()=>translateTask(index,text),700);
+  }
 
   function parseMessage(){
     const parsed=parseDailyReportMessage(rawMessage);
@@ -71,7 +102,11 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
     }
     if(parsed.labor.length)setLabor(parsed.labor.map(i=>({...i,crewName:i.crewName||""})));
     if(parsed.equipment.length)setEquipment(parsed.equipment);
-    if(parsed.tasks.length)setTasks(parsed.tasks.map(i=>({...i,areaLabel:i.areaLabel||"",descriptionZh:""})));
+    if(parsed.tasks.length){
+      const next=parsed.tasks.map(i=>({...i,areaLabel:i.areaLabel||"",descriptionZh:"",translationState:"loading" as const}));
+      setTasks(next);
+      next.forEach((item,index)=>scheduleTranslation(index,item.descriptionVi));
+    }
     setNotice({type:"ok",title:"Đã bóc tách báo cáo",text:"Kiểm tra lại số liệu trước khi gửi."});
   }
   function changeLabor(index:number,patch:Partial<LaborEntry>){setLabor(items=>items.map((item,i)=>i===index?{...item,...patch}:item));}
@@ -84,10 +119,20 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
     if(!next){setNotice({type:"error",title:"Không còn móng để chọn",text:"Danh sách móng của đội đã được chọn hết."});return;}
     setFoundationUpdates(items=>[...items,{foundationId:next.id,stage:next.current_stage||"Thi công móng",progress:Number(next.progress||0)}]);
   }
-  function selectFiles(selected:FileList|null){
-    const picked=Array.from(selected||[]).filter(isImageFile).slice(0,10);
-    setFiles(picked);
-    if(Array.from(selected||[]).length>10)setNotice({type:"error",title:"Tối đa 10 ảnh",text:"Hệ thống đã giữ lại 10 ảnh đầu tiên."});
+  function addFiles(selected:FileList|File[]|null){
+    const incoming=Array.from(selected||[]);
+    const valid=incoming.filter(isImageFile);
+    const merged=[...files];
+    const seen=new Set(merged.map(fileKey));
+    for(const file of valid){
+      const key=fileKey(file);
+      if(!seen.has(key)){merged.push(file);seen.add(key);}
+    }
+    const kept=merged.slice(0,10);
+    setFiles(kept);
+    setFileInputKey(value=>value+1);
+    if(merged.length>10)setNotice({type:"error",title:"Tối đa 10 ảnh",text:`Đã giữ ${kept.length} ảnh. Bạn có thể xóa ảnh cũ rồi chọn thêm ảnh khác.`});
+    else if(valid.length!==incoming.length)setNotice({type:"error",title:"Có tệp không phải ảnh",text:"Hệ thống chỉ nhận JPG, PNG, WEBP, HEIC và HEIF."});
   }
   function removeFile(index:number){ setFiles(items=>items.filter((_,i)=>i!==index)); }
   function clearSubmittedData(){ setRawMessage(""); setLabor(createInitialLabor()); setEquipment(createInitialEquipment()); setTasks(createInitialTasks()); setFoundationUpdates([]); setFiles([]); setPhotoCaption(""); setFileInputKey(v=>v+1); }
@@ -100,13 +145,23 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
         reportDate, leaderId:user.role==="commander"?leaderId:undefined, rawMessage, weatherMorning, weatherAfternoon,
         labor:labor.filter(i=>i.label.trim()&&Number(i.headcount)>=0).map((i,index)=>({...i,headcount:Number(i.headcount),sortOrder:(index+1)*10})),
         equipment:equipment.filter(i=>i.equipmentName.trim()).map((i,index)=>({...i,quantity:Number(i.quantity),sortOrder:(index+1)*10})),
-        tasks:tasks.filter(i=>i.descriptionVi.trim()).map((i,index)=>({...i,sortOrder:(index+1)*10})),
+        tasks:tasks.filter(i=>i.descriptionVi.trim()).map((i,index)=>({kind:i.kind,areaLabel:i.areaLabel,descriptionVi:i.descriptionVi,descriptionZh:i.descriptionZh,sortOrder:(index+1)*10})),
         foundationUpdates:foundationUpdates.map(i=>({...i,progress:Number(i.progress)})),
         issueText:""
       })});
       const result=await response.json(); if(!response.ok)throw new Error(result.error||"Không gửi được báo cáo.");
       const reportId=result.result?.report_id;
-      if(reportId&&files.length){ for(const file of files){ const image=new FormData(); image.append("file",file); image.append("caption",photoCaption); image.append("photoType","work"); const upload=await fetch(`/api/reports/${reportId}/photos`,{method:"POST",body:image}); const uploadResult=await upload.json(); if(!upload.ok)throw new Error(`Báo cáo đã lưu nhưng ảnh chưa tải lên: ${uploadResult.error||"Không rõ lỗi"}`); } }
+      if(reportId&&files.length){
+        for(const file of files){
+          const image=new FormData();
+          image.append("file",file);
+          image.append("caption",photoCaption);
+          image.append("photoType","work");
+          const upload=await fetch(`/api/reports/${reportId}/photos`,{method:"POST",body:image});
+          const uploadResult=await upload.json();
+          if(!upload.ok)throw new Error(`Báo cáo đã lưu nhưng ảnh chưa tải lên: ${uploadResult.error||"Không rõ lỗi"}`);
+        }
+      }
       clearSubmittedData();
       setNotice({type:"ok",title:"Đã gửi báo cáo",text:`${submittedWorkers} công nhân · ${submittedTechnical} kỹ thuật${submittedFoundations?` · ${submittedFoundations} móng`:""}${submittedPhotos?` · ${submittedPhotos} ảnh`:""}`});
       router.refresh();
@@ -156,15 +211,24 @@ export function DailyReportForm({ user, leaders, foundations }: { user:SessionUs
 
       <section className="form-section">
         <div className="section-heading"><span>05</span><div><h3>Công việc trong ngày</h3></div></div>
-        <div className="task-editor-stack">{tasks.map((item,index)=><div className="task-editor-card" key={index}><div className="task-editor-top"><select value={item.kind} onChange={e=>changeTask(index,{kind:e.target.value as "main"|"other"})}><option value="main">Công việc chính</option><option value="other">Công việc khác</option></select><input value={item.areaLabel} onChange={e=>changeTask(index,{areaLabel:e.target.value})} placeholder="Khu vực: Xưởng 1, Xưởng 3..."/><button type="button" className="icon-button" onClick={()=>setTasks(items=>items.filter((_,i)=>i!==index))}><Trash2 size={15}/></button></div><textarea rows={2} value={item.descriptionVi} onChange={e=>changeTask(index,{descriptionVi:e.target.value})} placeholder="Nội dung công việc"/><input value={item.descriptionZh} onChange={e=>changeTask(index,{descriptionZh:e.target.value})} placeholder="中文说明（可选）"/></div>)}</div>
-        <button className="button ghost" type="button" onClick={()=>setTasks(items=>[...items,{kind:"main",areaLabel:"",descriptionVi:"",descriptionZh:""}])}><Plus size={16}/> Thêm công việc</button>
+        <div className="task-editor-stack">{tasks.map((item,index)=><div className="task-editor-card" key={index}>
+          <div className="task-editor-top"><select value={item.kind} onChange={e=>changeTask(index,{kind:e.target.value as "main"|"other"})}><option value="main">Công việc chính</option><option value="other">Công việc khác</option></select><input value={item.areaLabel} onChange={e=>changeTask(index,{areaLabel:e.target.value})} placeholder="Khu vực: Xưởng 1, Xưởng 3..."/><button type="button" className="icon-button" onClick={()=>setTasks(items=>items.filter((_,i)=>i!==index))}><Trash2 size={15}/></button></div>
+          <textarea rows={2} value={item.descriptionVi} onChange={e=>{const value=e.target.value;changeTask(index,{descriptionVi:value});scheduleTranslation(index,value);}} placeholder="Nội dung công việc bằng tiếng Việt"/>
+          <div className="translation-field-row">
+            <Languages size={17}/>
+            <input value={item.descriptionZh} onChange={e=>changeTask(index,{descriptionZh:e.target.value,translationState:"done"})} placeholder="Tiếng Trung sẽ tự dịch theo nội dung tiếng Việt"/>
+            <button type="button" className="translation-retry" onClick={()=>translateTask(index,item.descriptionVi)} disabled={!item.descriptionVi.trim()||item.translationState==="loading"}>{item.translationState==="loading"?<Loader2 className="spin" size={15}/>:"Dịch lại"}</button>
+          </div>
+          <small className={`translation-status ${item.translationState||"idle"}`}>{item.translationState==="loading"?"Đang dịch...":item.translationState==="done"?"Đã dịch sang tiếng Trung. Có thể sửa lại nếu cần.":item.translationState==="error"?"Chưa dịch được tự động. Bạn có thể nhập thủ công hoặc bấm Dịch lại.":"Tiếng Trung sẽ được điền tự động sau khi nhập tiếng Việt."}</small>
+        </div>)}</div>
+        <button className="button ghost" type="button" onClick={()=>setTasks(items=>[...items,{kind:"main",areaLabel:"",descriptionVi:"",descriptionZh:"",translationState:"idle"}])}><Plus size={16}/> Thêm công việc</button>
       </section>
 
       <section className="form-section">
         <div className="section-heading"><span>06</span><div><h3>Ảnh thi công đại diện</h3></div></div>
-        <label className="upload-box"><UploadCloud size={30}/><strong>Chọn ảnh công trường</strong><span>JPG, PNG, WEBP, HEIC · tối đa 10 ảnh</span><input key={fileInputKey} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple onChange={e=>selectFiles(e.target.files)}/></label>
-        {photoPreviews.length?<div className="photo-upload-preview-grid">{photoPreviews.map((item,index)=><div className="photo-upload-preview" key={`${item.file.name}-${item.file.size}-${index}`}><img src={item.url} alt={`Ảnh đã chọn ${index+1}`}/><button type="button" onClick={()=>removeFile(index)} aria-label={`Xóa ảnh ${index+1}`}><X size={16}/></button><span>{index+1}</span><small>{item.file.name}</small></div>)}</div>:null}
-        {files.length?<div className="photo-selection-summary"><Camera size={16}/><strong>Đã chọn {files.length} ảnh</strong><span>Tất cả ảnh phía trên sẽ được tải lên cùng báo cáo.</span></div>:null}
+        <label className="upload-box" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();addFiles(e.dataTransfer.files);}}><UploadCloud size={30}/><strong>{files.length?"Chọn thêm ảnh công trường":"Chọn ảnh công trường"}</strong><span>JPG, PNG, WEBP, HEIC · tối đa 10 ảnh · có thể chọn nhiều lần hoặc kéo thả</span><input key={fileInputKey} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple onChange={e=>addFiles(e.target.files)}/></label>
+        {photoPreviews.length?<div className="photo-upload-preview-grid">{photoPreviews.map((item,index)=><div className="photo-upload-preview" key={`${fileKey(item.file)}-${index}`}><img src={item.url} alt={`Ảnh đã chọn ${index+1}`}/><button type="button" onClick={()=>removeFile(index)} aria-label={`Xóa ảnh ${index+1}`}><X size={16}/></button><span>{index+1}</span><small title={item.file.name}>{item.file.name}</small></div>)}</div>:null}
+        {files.length?<div className="photo-selection-summary"><Camera size={16}/><strong>Đã chọn {files.length}/10 ảnh</strong><span>{files.length<10?`Có thể chọn thêm ${10-files.length} ảnh. Ảnh mới sẽ được cộng thêm, không thay ảnh cũ.`:"Đã đủ 10 ảnh."}</span></div>:null}
         <label className="field"><span>Chú thích ảnh</span><input value={photoCaption} onChange={e=>setPhotoCaption(e.target.value)} placeholder="VD: Lắp dựng cốt thép dầm móng Xưởng 1"/></label>
       </section>
 
