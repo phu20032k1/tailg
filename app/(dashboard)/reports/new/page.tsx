@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { ClipboardPlus } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getFormMeta } from "@/lib/data";
@@ -5,6 +6,8 @@ import { DailyReportForm } from "@/components/daily-report-form";
 
 export default async function NewReportPage() {
   const user = await requireUser();
+  if (user.role === "commander") redirect("/");
+
   const meta = await getFormMeta(user);
 
   return (
