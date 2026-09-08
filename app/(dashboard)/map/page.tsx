@@ -21,6 +21,7 @@ export default async function MapPage({ searchParams }: { searchParams?: Promise
   ]);
   const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(new Date());
   const visibleZones=user.role==="commander"?zones:zones.filter(zone=>zone.owner_id===user.id);
+  const progressUsers=users.filter(item=>item.role==="commander"||item.role==="leader").map(item=>({id:item.id,full_name:item.full_name,role:item.role as "commander"|"leader"}));
 
   return (
     <>
@@ -41,7 +42,7 @@ export default async function MapPage({ searchParams }: { searchParams?: Promise
       </div></section>
 
       <div className="section-gap">
-        <ProgressStageManager items={items} zones={visibleZones} users={users} commander={user.role==="commander"} stage={stage} today={today} mapUrl={map?.signedUrl||null}/>
+        <ProgressStageManager items={items} zones={visibleZones} users={progressUsers} commander={user.role==="commander"} stage={stage} today={today} mapUrl={map?.signedUrl||null}/>
       </div>
     </>
   );
