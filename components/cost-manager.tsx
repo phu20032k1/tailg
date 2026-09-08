@@ -1,0 +1,27 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, LoaderCircle, X } from "lucide-react";
+import type { SessionUser } from "@/lib/types";
+
+const CATEGORY_LABEL: Record<string,string> = { material: "Vật liệu", machine: "Máy", other: "Khác", labor: "Nhân công" };
+const OWNER_LABEL: Record<string,string> = { ban: "Ban điều hành", team: "Đội thi công", subcontractor: "Nhà thầu phụ", project: "Toàn dự án" };
+function money(v:number){return new Intl.NumberFormat("vi-VN",{maximumFractionDigits:0}).format(v||0)+" ₫";}
+
+export function CostManager({ user, costs }: { user: SessionUser; costs: any[] }) {
+  const router=useRouter(); const [busy,setBusy]=useState(false); const [message,setMessage]=useState(""); const [filter,setFilter]=useState("");
+  const canEdit=["commander","khkt","finance"].includes(user.role);
+  const shown=useMemo(()=>costs.filter((c)=>!filter||String(c.owner_name).toLowerCase().includes(filter.toLowerCase())||String(c.description||"").toLowerCase().includes(filter.toLowerCase())||String(c.supplier||"").toLowerCase().includes(filter.toLowerCase())),[costs,filter]);
+  async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);setMessage("");const f=new FormData(event.currentTarget);try{const r=await fetch("/api/commercial/costs",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({costDate:f.get("costDate"),ownerType:f.get("ownerType"),ownerName:f.get("ownerName"),category:f.get("category"),supplier:f.get("supplier"),invoiceNo:f.get("invoiceNo"),description:f.get("description"),quantity:f.get("quantity")||undefined,unit:f.get("unit"),unitPrice:f.get("unitPrice")||undefined,amount:f.get("amount")})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Không lưu được chi phí.");event.currentTarget.reset();setMessage("Đã cập nhật chi phí");router.refresh();}catch(e){setMessage(e instanceof Error?e.message:"Không lưu được chi phí.");}finally{setBusy(false);}}
+  return <>
+    {canEdit?<form className="panel commercial-form" onSubmit={submit}><div className="panel-head"><div><span className="eyebrow">CẬP NHẬT CHI PHÍ</span><h2>Nhập chi phí phát sinh</h2></div></div><div className="panel-body commercial-form-grid">
+      <label className="field"><span>Ngày</span><input name="costDate" type="date" required/></label><label className="field"><span>Đối tượng</span><select name="ownerType" defaultValue="team"><option value="ban">Ban điều hành</option><option value="team">Đội thi công</option><option value="subcontractor">Nhà thầu phụ</option><option value="project">Toàn dự án</option></select></label><label className="field"><span>Tên đơn vị / đội</span><input name="ownerName" required placeholder="VD: Bùi Văn Đức / Hải Long"/></label>
+      <label className="field"><span>Nhóm chi phí</span><select name="category" defaultValue="material"><option value="material">Vật liệu</option><option value="machine">Máy</option><option value="labor">Nhân công</option><option value="other">Khác</option></select></label><label className="field"><span>Nhà cung cấp</span><input name="supplier"/></label><label className="field"><span>Số hóa đơn</span><input name="invoiceNo"/></label>
+      <label className="field commercial-span-2"><span>Nội dung</span><input name="description" placeholder="Nội dung chi phí"/></label><label className="field"><span>Số lượng</span><input name="quantity" type="number" min="0" step="0.001"/></label><label className="field"><span>Đơn vị</span><input name="unit"/></label><label className="field"><span>Đơn giá</span><input name="unitPrice" type="number" min="0" step="1"/></label><label className="field"><span>Thành tiền</span><input name="amount" type="number" min="0" step="1" required/></label>
+      <div className="commercial-form-actions"><button className="button primary" disabled={busy} type="submit">{busy?<><LoaderCircle className="route-loading-spinner" size={17}/> Đang lưu...</>:"Lưu chi phí"}</button></div>
+    </div></form>:null}
+    <section className="panel"><div className="panel-head commercial-list-head"><div><span className="eyebrow">CHI TIẾT</span><h2>Các khoản chi đã ghi nhận</h2></div><input className="commercial-search" value={filter} onChange={(e)=>setFilter(e.target.value)} placeholder="Tìm đội, nhà thầu, nội dung..."/></div><div className="commercial-table-wrap"><table className="commercial-table"><thead><tr><th>Ngày</th><th>Đối tượng</th><th>Đơn vị / đội</th><th>Nhóm</th><th>Nội dung</th><th>Nhà cung cấp</th><th>Hóa đơn</th><th>Thành tiền</th></tr></thead><tbody>{shown.map((c)=><tr key={c.id}><td>{c.cost_date}</td><td>{OWNER_LABEL[c.owner_type]||c.owner_type}</td><td><strong>{c.owner_name}</strong></td><td>{CATEGORY_LABEL[c.category]||c.category}</td><td>{c.description||"-"}</td><td>{c.supplier||"-"}</td><td>{c.invoice_no||"-"}</td><td><strong>{money(Number(c.amount))}</strong></td></tr>)}{!shown.length?<tr><td colSpan={8} className="commercial-empty-cell">Chưa có dữ liệu phù hợp.</td></tr>:null}</tbody></table></div></section>
+    {message?<div className="operation-popup ok"><div className="operation-popup-icon"><CheckCircle2/></div><div className="operation-popup-copy"><strong>{message}</strong></div><button className="operation-popup-close" onClick={()=>setMessage("")}><X size={17}/></button></div>:null}
+  </>;
+}
