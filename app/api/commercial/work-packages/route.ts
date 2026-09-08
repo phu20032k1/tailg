@@ -11,6 +11,7 @@ const schema = z.object({
   ownerName: z.string().trim().min(2).max(180),
   plannedQuantity: z.coerce.number().positive(),
   unit: z.string().trim().min(1).max(30),
+  weightPercent: z.coerce.number().min(0).max(100).default(0),
   plannedStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   plannedFinish: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
       owner_name: body.ownerName,
       planned_quantity: body.plannedQuantity,
       unit: body.unit,
+      weight_percent: body.weightPercent,
       planned_start: body.plannedStart || null,
       planned_finish: body.plannedFinish || null,
       current_quantity: 0,
