@@ -8,8 +8,15 @@ const equipmentSchema = z.object({ equipmentName:z.string().trim().min(1).max(12
 const taskSchema = z.object({ kind:z.enum(["main","other"]), areaLabel:z.string().trim().max(180).optional().default(""), descriptionVi:z.string().trim().min(2).max(2000), descriptionZh:z.string().trim().max(2000).optional().default(""), sortOrder:z.coerce.number().int().min(0).max(9999).default(0) });
 const foundationSchema = z.object({ foundationId:z.string().uuid(), stage:z.string().trim().min(1).max(200), progress:z.coerce.number().min(0).max(100) });
 const reportSchema = z.object({
-  reportDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/), leaderId:z.string().uuid().optional(), rawMessage:z.string().max(20000).optional().default(""), issueText:z.string().max(2000).optional().default(""),
-  labor:z.array(laborSchema).max(50), equipment:z.array(equipmentSchema).max(50), tasks:z.array(taskSchema).max(100), foundationUpdates:z.array(foundationSchema).max(100).optional().default([])
+  reportDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  rawMessage:z.string().max(20000).optional().default(""),
+  issueText:z.string().max(2000).optional().default(""),
+  weatherMorning:z.string().trim().max(120).optional().default(""),
+  weatherAfternoon:z.string().trim().max(120).optional().default(""),
+  labor:z.array(laborSchema).max(50),
+  equipment:z.array(equipmentSchema).max(50),
+  tasks:z.array(taskSchema).max(100),
+  foundationUpdates:z.array(foundationSchema).max(100).optional().default([])
 });
 
 export async function POST(request:NextRequest){
@@ -48,6 +55,13 @@ export async function POST(request:NextRequest){
 
     const reportId=(data as any)?.report_id;
     if(reportId){
+      const {error:weatherError}=await db.from("daily_reports").update({
+        weather_morning:body.weatherMorning||null,
+        weather_afternoon:body.weatherAfternoon||null,
+        updated_at:new Date().toISOString()
+      }).eq("id",reportId).eq("leader_id",leaderId);
+      if(weatherError)throw weatherError;
+
       const {error:deleteError}=await db.from("work_items").delete().eq("report_id",reportId);
       if(deleteError)throw deleteError;
       if(body.foundationUpdates.length){
