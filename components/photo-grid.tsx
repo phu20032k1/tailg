@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Maximize2, X } from "lucide-react";
 
 type Photo = {
@@ -13,21 +14,56 @@ type Photo = {
 export function PhotoGrid({ photos }: { photos: Photo[] }) {
   const visible = photos.filter((photo) => photo.signedUrl);
   const [selected, setSelected] = useState<Photo | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!selected) return;
+
+    const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setSelected(null);
     };
+
     document.addEventListener("keydown", onKeyDown);
     document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [selected]);
 
   if (!visible.length) return null;
+
+  const lightbox = selected?.signedUrl ? (
+    <div
+      className="photo-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ảnh hiện trường"
+      onClick={() => setSelected(null)}
+    >
+      <button
+        className="photo-lightbox-close"
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setSelected(null);
+        }}
+        aria-label="Đóng ảnh"
+      >
+        <X size={24} />
+      </button>
+
+      <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={selected.signedUrl} alt={selected.caption || "Ảnh hiện trường"} decoding="async" />
+        {selected.caption ? <div className="photo-lightbox-caption">{selected.caption}</div> : null}
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -53,18 +89,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
         ))}
       </div>
 
-      {selected?.signedUrl ? (
-        <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="Ảnh hiện trường" onClick={() => setSelected(null)}>
-          <button className="photo-lightbox-close" type="button" onClick={() => setSelected(null)} aria-label="Đóng ảnh">
-            <X size={24} />
-          </button>
-          <div className="photo-lightbox-content" onClick={(event) => event.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.signedUrl} alt={selected.caption || "Ảnh hiện trường"} decoding="async" />
-            {selected.caption ? <div className="photo-lightbox-caption">{selected.caption}</div> : null}
-          </div>
-        </div>
-      ) : null}
+      {mounted && lightbox ? createPortal(lightbox, document.body) : null}
     </>
   );
 }
