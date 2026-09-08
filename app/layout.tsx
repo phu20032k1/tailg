@@ -5,6 +5,7 @@ import "./bright-theme.css";
 import "./polish.css";
 import "./foundation-v4.css";
 import "./chat.css";
+import "./commander-dashboard.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
