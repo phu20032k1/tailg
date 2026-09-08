@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./v3.css";
 import "./bright-theme.css";
@@ -12,10 +12,17 @@ import "./team-detail.css";
 import "./report-improvements.css";
 import "./management-report.css";
 import "./management-report-auto.css";
+import "./mobile-tabbar.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
   description: "Báo cáo thi công hằng ngày và tổng hợp điều hành dự án TAILG."
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
