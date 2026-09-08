@@ -58,7 +58,9 @@ export async function getDailyManagementReport(user: SessionUser, date: string) 
       photos,
       issueText: report?.issue_text || "",
       weatherMorning: report?.weather_morning || "",
+      weatherNoon: report?.weather_noon || "",
       weatherAfternoon: report?.weather_afternoon || "",
+      weatherEvening: report?.weather_evening || "",
       foundationCount: teamFoundations.length,
       completedFoundations,
       foundationProgress: teamFoundations.length
@@ -95,6 +97,14 @@ export async function getDailyManagementReport(user: SessionUser, date: string) 
     }
   }
 
+  const workSummary = reported.flatMap((team) => team.tasks.map((task) => ({
+    team: team.leader.full_name,
+    area: task.area_label || team.zoneLabel || "Công trường",
+    kind: task.kind,
+    descriptionVi: task.description_vi,
+    descriptionZh: task.description_zh || ""
+  }))).sort((a, b) => areaRank(a.area) - areaRank(b.area) || teamRank(a.team) - teamRank(b.team));
+
   const updatedAt = reported
     .map((team) => team.report?.updated_at || team.report?.submitted_at || "")
     .filter(Boolean)
@@ -104,6 +114,7 @@ export async function getDailyManagementReport(user: SessionUser, date: string) 
   return {
     date,
     teamRows,
+    workSummary,
     summary: {
       teamsReported: reported.length,
       totalWorkers,
@@ -114,7 +125,9 @@ export async function getDailyManagementReport(user: SessionUser, date: string) 
       totalPhotos,
       totalFoundationUpdates,
       weatherMorning: uniqueText(reported.map((team) => team.weatherMorning)).join(" / ") || "Chưa ghi nhận",
+      weatherNoon: uniqueText(reported.map((team) => team.weatherNoon)).join(" / ") || "Chưa ghi nhận",
       weatherAfternoon: uniqueText(reported.map((team) => team.weatherAfternoon)).join(" / ") || "Chưa ghi nhận",
+      weatherEvening: uniqueText(reported.map((team) => team.weatherEvening)).join(" / ") || "Chưa ghi nhận",
       laborTotals: [...laborTotals.values()],
       equipmentTotals: [...equipmentTotals.values()].sort((a, b) => a.name.localeCompare(b.name, "vi")),
       updatedAt
