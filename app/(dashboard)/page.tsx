@@ -7,6 +7,7 @@ import { PhotoGrid } from "@/components/photo-grid";
 import { SiteMap } from "@/components/site-map";
 import { StatCard } from "@/components/stat-card";
 import { TeamPhotoStrip } from "@/components/team-photo-strip";
+import { PeriodFilter } from "@/components/period-filter";
 
 function mondayOf(dateText: string) {
   const date = new Date(`${dateText}T12:00:00+07:00`);
@@ -45,11 +46,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
       const reports = periodReports.filter((report) => report.leader_id === leader.id).sort((a, b) => b.report_date.localeCompare(a.report_date));
       const latest = reports[0];
       const foundationsOfTeam = foundations.filter((item) => item.owner_id === leader.id);
-      const zoneNames = data.zones.filter((zone) => zone.owner_id === leader.id).map((zone) => zone.name);
-      const avgProgress = foundationsOfTeam.length ? foundationsOfTeam.reduce((sum, item) => sum + Number(item.progress || 0), 0) / foundationsOfTeam.length : 0;
+      const teamZones = data.zones.filter((zone) => zone.owner_id === leader.id);
+      const zoneNames = teamZones.map((zone) => zone.name);
+      const avgProgress = foundationsOfTeam.length ? foundationsOfTeam.reduce((sum, item) => sum + Number(item.progress || 0), 0) / foundationsOfTeam.length : teamZones.length ? teamZones.reduce((sum, zone) => sum + Number(zone.progress || 0), 0) / teamZones.length : 0;
       const avgWorkers = reports.length ? Math.round(reports.reduce((sum, report) => sum + Number(report.workers || 0), 0) / reports.length) : 0;
       const teamPhotos = reports.flatMap((report) => report.photos || []).filter((photo) => Boolean(photo.signedUrl));
-      return { leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers, teamPhotos };
+      return { leader, reports, latest, foundationsOfTeam, teamZones, zoneNames, avgProgress, avgWorkers, teamPhotos };
     });
 
     return (
@@ -62,21 +64,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           </div>
         </section>
 
-        <section className="commander-period-bar">
-          <div className="period-tabs">
-            <Link className={mode === "day" ? "active" : ""} href={`/?view=day&date=${selectedDate}`}>Theo ngày</Link>
-            <Link className={mode === "week" ? "active" : ""} href={`/?view=week&date=${selectedDate}`}>Theo tuần</Link>
-          </div>
-          <form className="period-date-form" method="get">
-            <input type="hidden" name="view" value={mode} />
-            <label><CalendarDays size={17} /><span>{mode === "week" ? "Chọn ngày trong tuần" : "Ngày báo cáo"}</span><input type="date" name="date" defaultValue={selectedDate} /></label>
-            <button className="button secondary" type="submit">Xem</button>
-          </form>
-          <div className="period-caption">
-            <strong>{mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)}</strong>
-            <span>{mode === "week" ? `${reportDays} ngày có dữ liệu` : "Số liệu trong ngày"}</span>
-          </div>
-        </section>
+        <PeriodFilter
+          basePath="/"
+          mode={mode}
+          selectedDate={selectedDate}
+          periodTitle={mode === "week" ? `Tuần ${formatDate(from)} – ${formatDate(to)}` : formatDate(selectedDate)}
+          periodNote={mode === "week" ? `${reportDays} ngày có dữ liệu` : "Số liệu trong ngày"}
+        />
 
         <section className="stats-grid commander-stats">
           <StatCard label={mode === "week" ? "Nhân lực bình quân" : "Công nhân"} value={mode === "week" ? averageWorkers : workerTotal} hint={`${technicalTotal} lượt cán bộ kỹ thuật`} icon={HardHat} tone="blue" />
@@ -91,7 +85,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
             <Link className="text-link" href={`/reports?from=${from}&to=${to}`}>Xem toàn bộ báo cáo <ArrowRight size={15} /></Link>
           </div>
           <div className="commander-team-grid">
-            {teamRows.map(({ leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers, teamPhotos }) => (
+            {teamRows.map(({ leader, reports, latest, foundationsOfTeam, teamZones, zoneNames, avgProgress, avgWorkers, teamPhotos }) => (
               <article className="commander-team-card" key={leader.id}>
                 <div className="team-card-top">
                   <div className="team-avatar">{leader.full_name.split(" ").slice(-1)[0]?.charAt(0)}</div>
@@ -104,8 +98,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                   <div><span>Báo cáo</span><strong>{reports.length}</strong></div>
                   <div><span>Số móng</span><strong>{foundationsOfTeam.length}</strong></div>
                 </div>
-                <div className="team-progress-row"><span>Tiến độ móng</span><b>{formatPercent(avgProgress)}%</b></div>
+                <div className="team-progress-row"><span>Tiến độ tổng hợp</span><b>{formatPercent(avgProgress)}%</b></div>
                 <div className="progress-track large"><i style={{ width: `${Math.min(100, Math.max(0, avgProgress))}%` }} /></div>
+                {teamZones.length > 1 ? <div className="team-zone-progress-list">{teamZones.map((zone) => <div key={zone.id}><span>{zone.name}</span><b>{formatPercent(Number(zone.progress || 0))}%</b><div className="progress-track"><i style={{ width: `${Math.min(100, Math.max(0, Number(zone.progress || 0)))}%` }}/></div></div>)}</div> : null}
                 <div className="team-latest-work">
                   <span>Công việc gần nhất</span>
                   <p>{latest?.tasks?.[0]?.description_vi || latest?.workItems?.[0]?.stage || "Chưa có công việc trong kỳ."}</p>
