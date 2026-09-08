@@ -6,6 +6,7 @@ import { formatDate, formatPercent } from "@/lib/format";
 import { PhotoGrid } from "@/components/photo-grid";
 import { SiteMap } from "@/components/site-map";
 import { StatCard } from "@/components/stat-card";
+import { TeamPhotoStrip } from "@/components/team-photo-strip";
 
 function mondayOf(dateText: string) {
   const date = new Date(`${dateText}T12:00:00+07:00`);
@@ -47,7 +48,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
       const zoneNames = data.zones.filter((zone) => zone.owner_id === leader.id).map((zone) => zone.name);
       const avgProgress = foundationsOfTeam.length ? foundationsOfTeam.reduce((sum, item) => sum + Number(item.progress || 0), 0) / foundationsOfTeam.length : 0;
       const avgWorkers = reports.length ? Math.round(reports.reduce((sum, report) => sum + Number(report.workers || 0), 0) / reports.length) : 0;
-      return { leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers };
+      const teamPhotos = reports.flatMap((report) => report.photos || []).filter((photo) => Boolean(photo.signedUrl));
+      return { leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers, teamPhotos };
     });
 
     return (
@@ -90,7 +92,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
             <Link className="text-link" href={`/reports?from=${from}&to=${to}`}>Xem toàn bộ báo cáo <ArrowRight size={15} /></Link>
           </div>
           <div className="commander-team-grid">
-            {teamRows.map(({ leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers }) => (
+            {teamRows.map(({ leader, reports, latest, foundationsOfTeam, zoneNames, avgProgress, avgWorkers, teamPhotos }) => (
               <article className="commander-team-card" key={leader.id}>
                 <div className="team-card-top">
                   <div className="team-avatar">{leader.full_name.split(" ").slice(-1)[0]?.charAt(0)}</div>
@@ -109,6 +111,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                   <span>Công việc gần nhất</span>
                   <p>{latest?.tasks?.[0]?.description_vi || latest?.workItems?.[0]?.stage || "Chưa có công việc trong kỳ."}</p>
                 </div>
+                <TeamPhotoStrip photos={teamPhotos} />
                 <Link className="team-detail-link" href={`/teams/${leader.id}?view=${mode}&date=${selectedDate}`}>Xem chi tiết <ArrowRight size={14}/></Link>
               </article>
             ))}
