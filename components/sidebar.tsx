@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Building2, ClipboardPlus, FileBarChart, FileText, History, LayoutDashboard, Map, MoreHorizontal, Rows3, Users, X, WalletCards, HandCoins, PackageCheck, ReceiptText, ChartNoAxesCombined, UserCog } from "lucide-react";
+import { BarChart3, Building2, Calculator, ClipboardPlus, FileBarChart, FileText, History, LayoutDashboard, Map, MoreHorizontal, Rows3, Users, X, WalletCards, HandCoins, PackageCheck, ReceiptText, ChartNoAxesCombined, UserCog } from "lucide-react";
 import type { SessionUser } from "@/lib/types";
 
 type NavItem = { href: string; label: string; mobileLabel: string; icon: typeof LayoutDashboard };
@@ -20,6 +20,7 @@ const commanderNav: NavItem[] = [
   { href: "/commercial", label: "Kinh tế - thanh toán", mobileLabel: "Kinh tế", icon: WalletCards },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
   { href: "/commercial/subcontractors", label: "Nhà thầu phụ & hiệu quả", mobileLabel: "Thầu phụ", icon: ReceiptText },
+  { href: "/commercial/material-analysis", label: "Phân tích vật tư thiết kế", mobileLabel: "Phân tích VT", icon: Calculator },
   { href: "/commercial/materials", label: "Quản lý vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/costs", label: "Theo dõi chi phí", mobileLabel: "Chi phí", icon: BarChart3 },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined },
@@ -44,6 +45,7 @@ const khktNav: NavItem[] = [
   { href: "/project-reports", label: "Báo cáo ngày công trường", mobileLabel: "Báo cáo ngày", icon: FileText },
   { href: "/commercial/subcontractors", label: "Nhà thầu phụ · nghiệm thu", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
+  { href: "/commercial/material-analysis", label: "Phân tích vật tư thiết kế", mobileLabel: "Phân tích VT", icon: Calculator },
   { href: "/commercial/materials", label: "Quản lý vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/costs", label: "Theo dõi chi phí", mobileLabel: "Chi phí", icon: BarChart3 },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined }
@@ -55,6 +57,7 @@ const directorNav: NavItem[] = [
   { href: "/project-reports", label: "Báo cáo ngày công trường", mobileLabel: "Báo cáo ngày", icon: FileText },
   { href: "/commercial/subcontractors", label: "Nhà thầu phụ · hiệu quả", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
+  { href: "/commercial/material-analysis", label: "Phân tích vật tư thiết kế", mobileLabel: "Phân tích VT", icon: Calculator },
   { href: "/commercial/materials", label: "Theo dõi vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined }
 ];
