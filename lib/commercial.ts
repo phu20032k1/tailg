@@ -25,6 +25,88 @@ function normalizePackages(rows: any[], paymentRequests: any[] = []) {
   });
 }
 
+function subcontractDashboard(contracts: any[], requests: any[]) {
+  const subcontractContracts = contracts.filter((item:any)=>item.contract_kind === "subcontract");
+  const rows = subcontractContracts.map((contract:any) => {
+    const related = requests.filter((row:any)=>row.request_type === "subcontractor" && row.contract_id === contract.id && row.status !== "cancelled");
+    const contractValue = Number(contract.after_tax_value || 0);
+    const certifiedValue = related.reduce((sum:number,row:any)=>sum + Number(row.certified_amount || 0), 0);
+    const paidValue = related.reduce((sum:number,row:any)=>sum + Number(row.amount_paid || 0), 0);
+    const requestedValue = related.reduce((sum:number,row:any)=>sum + Number(row.amount_requested || 0), 0);
+    const boqBudgetValue = Number(contract.boq_budget_value || 0);
+    const efficiencyValue = boqBudgetValue > 0 ? boqBudgetValue - contractValue : null;
+    const efficiencyPercent = boqBudgetValue > 0 ? ((boqBudgetValue - contractValue) / boqBudgetValue) * 100 : null;
+    return {
+      ...contract,
+      groupName: String(contract.company_group || contract.counterparty || "NHÀ THẦU KHÁC").trim(),
+      contractValue,
+      certifiedValue,
+      paidValue,
+      requestedValue,
+      remainingValue: Math.max(0, contractValue - paidValue),
+      remainingToCertify: Math.max(0, contractValue - certifiedValue),
+      boqBudgetValue,
+      efficiencyValue,
+      efficiencyPercent,
+      certifiedPercent: contractValue > 0 ? Math.min(100, (certifiedValue / contractValue) * 100) : 0,
+      paidPercent: contractValue > 0 ? Math.min(100, (paidValue / contractValue) * 100) : 0,
+      contractQuantity: Number(contract.contract_quantity || 0),
+      quantityUnit: contract.quantity_unit || null,
+      requestCount: related.length
+    };
+  });
+
+  const groups = new Map<string, any[]>();
+  for (const row of rows) {
+    const list = groups.get(row.groupName) || [];
+    list.push(row);
+    groups.set(row.groupName, list);
+  }
+
+  const companies = [...groups.entries()].map(([name, companyContracts]) => {
+    const total = (key:string) => companyContracts.reduce((sum:number,row:any)=>sum + Number(row[key] || 0), 0);
+    const contractValue = total("contractValue");
+    const certifiedValue = total("certifiedValue");
+    const paidValue = total("paidValue");
+    const boqBudgetValue = total("boqBudgetValue");
+    const efficiencyValue = boqBudgetValue > 0 ? boqBudgetValue - contractValue : null;
+    return {
+      name,
+      contracts: companyContracts,
+      contractCount: companyContracts.length,
+      contractValue,
+      certifiedValue,
+      paidValue,
+      remainingValue: Math.max(0, contractValue - paidValue),
+      boqBudgetValue,
+      efficiencyValue,
+      efficiencyPercent: boqBudgetValue > 0 ? ((boqBudgetValue - contractValue) / boqBudgetValue) * 100 : null,
+      certifiedPercent: contractValue > 0 ? Math.min(100, (certifiedValue / contractValue) * 100) : 0,
+      paidPercent: contractValue > 0 ? Math.min(100, (paidValue / contractValue) * 100) : 0
+    };
+  }).sort((a:any,b:any)=>a.name.localeCompare(b.name,"vi"));
+
+  const summary = {
+    companyCount: companies.length,
+    contractCount: rows.length,
+    contractValue: rows.reduce((sum:number,row:any)=>sum + row.contractValue,0),
+    certifiedValue: rows.reduce((sum:number,row:any)=>sum + row.certifiedValue,0),
+    paidValue: rows.reduce((sum:number,row:any)=>sum + row.paidValue,0),
+    boqBudgetValue: rows.reduce((sum:number,row:any)=>sum + row.boqBudgetValue,0)
+  };
+  return {
+    companies,
+    summary: {
+      ...summary,
+      remainingValue: Math.max(0, summary.contractValue - summary.paidValue),
+      efficiencyValue: summary.boqBudgetValue > 0 ? summary.boqBudgetValue - summary.contractValue : null,
+      efficiencyPercent: summary.boqBudgetValue > 0 ? ((summary.boqBudgetValue - summary.contractValue) / summary.boqBudgetValue) * 100 : null,
+      certifiedPercent: summary.contractValue > 0 ? Math.min(100, (summary.certifiedValue / summary.contractValue) * 100) : 0,
+      paidPercent: summary.contractValue > 0 ? Math.min(100, (summary.paidValue / summary.contractValue) * 100) : 0
+    }
+  };
+}
+
 export async function getWorkPackages(user?: SessionUser) {
   const db = getSupabaseAdmin();
   let query = db.from("work_packages").select("*,work_package_updates(*)").order("sort_order").order("code");
@@ -72,15 +154,19 @@ export async function getCommercialData() {
     return { ...item, receipts, received, remaining: budget - received, overBudget: budget > 0 && received > budget, percent: budget > 0 ? (received / budget) * 100 : 0 };
   });
 
-  const ownerContract = (contractsRes.data || []).find((item: any) => item.contract_kind === "owner") || null;
+  const contracts = contractsRes.data || [];
+  const ownerContract = contracts.find((item: any) => item.contract_kind === "owner") || null;
   const subcontractRequests = requests.filter((item: any) => item.request_type === "subcontractor");
   const totalPaid = subcontractRequests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount_paid || 0), 0);
   const pendingPayment = subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).reduce((sum: number, item: any) => sum + Number(item.amount_requested || 0), 0);
   const totalCosts = (costsRes.data || []).reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const materialWarnings = materials.filter((item: any) => item.overBudget || item.percent >= 90).length;
+  const subcontract = subcontractDashboard(contracts, requests);
 
   return {
-    contracts: contractsRes.data || [], ownerContract, schedule: scheduleRes.data || [], requests, materials, costs: costsRes.data || [], packages, users,
+    contracts, ownerContract, schedule: scheduleRes.data || [], requests, materials, costs: costsRes.data || [], packages, users,
+    subcontractCompanies: subcontract.companies,
+    subcontractSummary: subcontract.summary,
     summary: { ownerContractValue: Number(ownerContract?.after_tax_value || 0), totalPaid, pendingPayment, totalCosts, materialWarnings, activeRequests: subcontractRequests.filter((item: any) => !["paid", "cancelled"].includes(item.status)).length }
   };
 }
