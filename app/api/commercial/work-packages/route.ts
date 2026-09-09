@@ -13,7 +13,10 @@ const schema = z.object({
   unit: z.string().trim().min(1).max(30),
   weightPercent: z.coerce.number().min(0).max(100).default(0),
   plannedStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  plannedFinish: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+  plannedFinish: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  assigneeIds: z.array(z.string().uuid()).max(20).default([]),
+  customFields: z.record(z.string(), z.string()).default({})
 });
 
 export async function POST(request: NextRequest) {
@@ -24,21 +27,19 @@ export async function POST(request: NextRequest) {
     const body = schema.parse(await request.json());
     const db = getSupabaseAdmin();
     const { data, error } = await db.from("work_packages").insert({
-      code: body.code.toUpperCase(),
-      title: body.title,
-      area_label: body.areaLabel || null,
-      owner_type: body.ownerType,
-      owner_name: body.ownerName,
-      planned_quantity: body.plannedQuantity,
-      unit: body.unit,
-      weight_percent: body.weightPercent,
-      planned_start: body.plannedStart || null,
-      planned_finish: body.plannedFinish || null,
-      current_quantity: 0,
-      status: "not_started"
+      code: body.code.toUpperCase(), title: body.title, area_label: body.areaLabel || null,
+      owner_type: body.ownerType, owner_name: body.ownerName,
+      planned_quantity: body.plannedQuantity, unit: body.unit, weight_percent: body.weightPercent,
+      planned_start: body.plannedStart || null, planned_finish: body.plannedFinish || null,
+      notes: body.notes || null, custom_fields: body.customFields,
+      current_quantity: 0, status: "not_started"
     }).select("*").single();
     if (error?.code === "23505") return NextResponse.json({ error: "Mã đầu mục đã tồn tại." }, { status: 409 });
     if (error) throw error;
+    if (body.assigneeIds.length) {
+      const { error: assignError } = await db.from("work_package_assignees").insert(body.assigneeIds.map((userId) => ({ work_package_id: data.id, user_id: userId })));
+      if (assignError) throw assignError;
+    }
     return NextResponse.json({ ok: true, workPackage: data }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Thông tin đầu mục tiến độ chưa hợp lệ." }, { status: 400 });
