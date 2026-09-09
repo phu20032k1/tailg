@@ -19,7 +19,7 @@ const commanderNav: NavItem[] = [
   { href: "/teams", label: "6 đội thi công", mobileLabel: "6 đội", icon: Users },
   { href: "/commercial", label: "Kinh tế - thanh toán", mobileLabel: "Kinh tế", icon: WalletCards },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
-  { href: "/commercial/subcontractors", label: "Thanh toán thầu phụ", mobileLabel: "Thầu phụ", icon: ReceiptText },
+  { href: "/commercial/subcontractors", label: "Nhà thầu phụ & hiệu quả", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/materials", label: "Quản lý vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/costs", label: "Theo dõi chi phí", mobileLabel: "Chi phí", icon: BarChart3 },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined },
@@ -40,8 +40,10 @@ const leaderNav: NavItem[] = [
 
 const khktNav: NavItem[] = [
   { href: "/commercial", label: "Tổng quan Kinh tế - KTKT", mobileLabel: "Tổng quan", icon: LayoutDashboard },
+  { href: "/reports", label: "Nhật ký 6 đội", mobileLabel: "Nhật ký", icon: History },
+  { href: "/project-reports", label: "Báo cáo ngày công trường", mobileLabel: "Báo cáo ngày", icon: FileText },
+  { href: "/commercial/subcontractors", label: "Nhà thầu phụ · nghiệm thu", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
-  { href: "/commercial/subcontractors", label: "Kiểm tra thanh toán thầu phụ", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/materials", label: "Quản lý vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/costs", label: "Theo dõi chi phí", mobileLabel: "Chi phí", icon: BarChart3 },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined }
@@ -49,8 +51,10 @@ const khktNav: NavItem[] = [
 
 const directorNav: NavItem[] = [
   { href: "/commercial", label: "Tổng quan dự án", mobileLabel: "Tổng quan", icon: LayoutDashboard },
+  { href: "/reports", label: "Nhật ký 6 đội", mobileLabel: "Nhật ký", icon: History },
+  { href: "/project-reports", label: "Báo cáo ngày công trường", mobileLabel: "Báo cáo ngày", icon: FileText },
+  { href: "/commercial/subcontractors", label: "Nhà thầu phụ · hiệu quả", mobileLabel: "Thầu phụ", icon: ReceiptText },
   { href: "/commercial/payments", label: "Thanh toán chủ đầu tư", mobileLabel: "Thanh toán CĐT", icon: HandCoins },
-  { href: "/commercial/subcontractors", label: "Phê duyệt thanh toán", mobileLabel: "Phê duyệt", icon: ReceiptText },
   { href: "/commercial/materials", label: "Theo dõi vật tư", mobileLabel: "Vật tư", icon: PackageCheck },
   { href: "/commercial/progress", label: "Tiến độ tổng thể", mobileLabel: "Tiến độ", icon: ChartNoAxesCombined }
 ];
