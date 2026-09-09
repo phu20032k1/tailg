@@ -18,6 +18,7 @@ import "./commercial.css";
 import "./material-workflow.css";
 import "./subcontractor-quantity.css";
 import "./sidebar-overflow.css";
+import "./subcontractor-dashboard.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
