@@ -20,22 +20,15 @@ import "./subcontractor-quantity.css";
 import "./sidebar-overflow.css";
 import "./subcontractor-dashboard.css";
 import "./shared-reports.css";
+import "./planning-v10.css";
 
 export const metadata: Metadata = {
   title: "TAILG · Điều hành công trường",
   description: "Báo cáo thi công hằng ngày và tổng hợp điều hành dự án TAILG."
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover"
-};
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="vi">
-      <body>{children}</body>
-    </html>
-  );
+  return <html lang="vi"><body>{children}</body></html>;
 }
